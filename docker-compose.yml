@@ -10,7 +10,7 @@ services:
     environment:
       APP_HOST: "0.0.0.0"
       APP_PORT: "8432"
-      BASE_URL: "${BASE_URL:-http://localhost:8432}"
+      BASE_URL: "${BASE_URL:-http://0.0.0.0:8432}"
       LOG_LEVEL: "${LOG_LEVEL:-info}"
 
       POSTGRES_HOST: "postgres"
