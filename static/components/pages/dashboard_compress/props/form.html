@@ -57,6 +57,11 @@
                     class="h-4 w-4 rounded border border-white/20 bg-secondary accent-highlight cursor-pointer" />
                 <span class="text-sm text-text-secondary">Lossless compression</span>
             </label>
+            <label class="flex cursor-pointer items-center gap-2.5 select-none">
+                <input id="compress-webp" type="checkbox" checked
+                    class="h-4 w-4 rounded border border-white/20 bg-secondary accent-highlight cursor-pointer" />
+                <span class="text-sm text-text-secondary">Convert to WebP</span>
+            </label>
         </div>
 
         <div class="rounded-lg border border-white/10 bg-secondary/40 px-4 py-3">
@@ -137,7 +142,7 @@
             }
 
             const lossless = document.getElementById('compress-lossless').checked;
-
+            const convertToWebP = document.getElementById('compress-webp').checked;
             const submitBtn = document.getElementById('compress-submit-btn');
             const submitLabel = document.getElementById('compress-submit-label');
             submitBtn.disabled = true;
@@ -152,6 +157,7 @@
                         quality: quality,
                         max_width: maxWidth,
                         lossless: lossless,
+                        convert_to_webp: convertToWebP,
                     }),
                 });
 

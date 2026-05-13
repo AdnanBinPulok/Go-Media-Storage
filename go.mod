@@ -4,11 +4,14 @@ go 1.25.1
 
 require (
 	github.com/AdnanBinPulok/pggo v0.0.9
+	github.com/chai2010/webp v1.4.0
+	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/gofiber/template/html/v2 v2.1.3
 	github.com/joho/godotenv v1.5.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	golang.org/x/crypto v0.49.0
+	golang.org/x/image v0.40.0
 )
 
 require (
@@ -22,7 +25,6 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/gofiber/template v1.8.3 // indirect
 	github.com/gofiber/utils v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -35,6 +37,5 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
-	golang.org/x/image v0.40.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 )

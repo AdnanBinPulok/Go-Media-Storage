@@ -18,10 +18,11 @@ import (
 )
 
 type CompressionRequest struct {
-	FileID   string `json:"file_id"`
-	Quality  int    `json:"quality"`
-	MaxWidth int    `json:"max_width"`
-	Lossless bool   `json:"lossless"`
+	FileID        string `json:"file_id"`
+	Quality       int    `json:"quality"`
+	MaxWidth      int    `json:"max_width"`
+	Lossless      bool   `json:"lossless"`
+	ConvertToWebP bool   `json:"convert_to_webp"`
 }
 
 type compressionMeta struct {
@@ -64,7 +65,7 @@ func RunImageCompression(mediaFile database_tables.MediaFileModel, req Compressi
 	if strings.ToLower(mediaFile.MimeType) == "image/gif" {
 		compressedBytes, algorithm, err = encodeGIF(f, req)
 	} else {
-		compressedBytes, outExt, outMime, algorithm, err = encodeStillImage(f, mediaFile.MimeType, mediaFile.FileExt, mediaFile.MimeType, req)
+		compressedBytes, outExt, outMime, algorithm, err = encodeStillImage(f, mediaFile.MimeType, mediaFile.FileExt, req)
 	}
 	if err != nil {
 		log.Printf("[compress] encode %s: %v", mediaFile.StoredName, err)
@@ -129,7 +130,7 @@ func encodeGIF(f *os.File, req CompressionRequest) (data []byte, algorithm strin
 // encodeStillImage decodes a single-frame image (JPEG, PNG, or other) and
 // re-encodes it. When lossless is true the output is always PNG regardless of
 // the source format; otherwise the source format is preserved.
-func encodeStillImage(f *os.File, mimeType, originalExt, originalMime string, req CompressionRequest) (data []byte, outExt, outMime, algorithm string, err error) {
+func encodeStillImage(f *os.File, mimeType, originalExt string, req CompressionRequest) (data []byte, outExt, outMime, algorithm string, err error) {
 	img, _, err := image.Decode(f)
 	f.Close()
 	if err != nil {
@@ -142,7 +143,25 @@ func encodeStillImage(f *os.File, mimeType, originalExt, originalMime string, re
 
 	var buf bytes.Buffer
 
-	if req.Lossless {
+	if req.ConvertToWebP {
+		if webpAvailable {
+			outExt = ".webp"
+			outMime = "image/webp"
+			if req.Lossless {
+				algorithm = "webp-lossless"
+			} else {
+				algorithm = "webp"
+			}
+			err = encodeWebP(&buf, img, req.Quality, req.Lossless)
+		} else {
+			// CGo not available — fall back to PNG
+			log.Printf("[compress] WebP requires CGo; falling back to PNG")
+			outExt = ".png"
+			outMime = "image/png"
+			algorithm = "png-lossless"
+			err = png.Encode(&buf, img)
+		}
+	} else if req.Lossless {
 		outExt = ".png"
 		outMime = "image/png"
 		algorithm = "png-lossless"
@@ -150,7 +169,7 @@ func encodeStillImage(f *os.File, mimeType, originalExt, originalMime string, re
 	} else {
 		// Preserve original ext/mime — format is not changing
 		outExt = originalExt
-		outMime = originalMime
+		outMime = mimeType
 		switch strings.ToLower(mimeType) {
 		case "image/jpeg", "image/jpg":
 			algorithm = "jpeg"

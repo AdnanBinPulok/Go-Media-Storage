@@ -1,5 +1,3 @@
-github.com/AdnanBinPulok/pggo v0.0.8 h1:O2oXHmmmBFqV7SJN7nxE0A1pqXPC9kuA3K+RNc3/TQg=
-github.com/AdnanBinPulok/pggo v0.0.8/go.mod h1:E3FTNKiPkfVe09oGbD+fIPp9mjEcp4FGaMZo1pSpsi0=
 github.com/AdnanBinPulok/pggo v0.0.9 h1:6Jt+XRA8P7z0prdJXHJUUJ3mkgxfK/D1P1Aq0IuMTn4=
 github.com/AdnanBinPulok/pggo v0.0.9/go.mod h1:E3FTNKiPkfVe09oGbD+fIPp9mjEcp4FGaMZo1pSpsi0=
 github.com/andybalholm/brotli v1.1.0 h1:eLKJA0d02Lf0mVpIDgYnqXcUn0GqVmEFny3VuID1U3M=
@@ -67,8 +65,6 @@ golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.42.0 h1:omrd2nAlyT5ESRdCLYdm3+fMfNFE/+Rf4bDIQImRJeo=
 golang.org/x/sys v0.42.0/go.mod h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=
-golang.org/x/text v0.35.0 h1:JOVx6vVDFokkpaq1AEptVzLTpDe9KGpj5tR4/X+ybL8=
-golang.org/x/text v0.35.0/go.mod h1:khi/HExzZJ2pGnjenulevKNX1W67CUy0AsXcNubPGCA=
 golang.org/x/text v0.37.0 h1:Cqjiwd9eSg8e0QAkyCaQTNHFIIzWtidPahFWR83rTrc=
 golang.org/x/text v0.37.0/go.mod h1:a5sjxXGs9hsn/AJVwuElvCAo9v8QYLzvavO5z2PiM38=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

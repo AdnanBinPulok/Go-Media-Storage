@@ -1,8 +1,10 @@
 # ── Stage 1: build ────────────────────────────────────────────────────────────
 FROM golang:1.25-alpine AS builder
 
-# CGO is not required (pure-Go image processing, no libwebp)
-ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+# CGo enabled for WebP support (chai2010/webp requires libwebp)
+ENV CGO_ENABLED=1 GOOS=linux GOARCH=amd64
+
+RUN apk add --no-cache gcc musl-dev libwebp-dev
 
 WORKDIR /build
 
@@ -20,7 +22,8 @@ FROM alpine:3.21
 
 # ca-certificates: needed for outbound TLS (e.g. database over SSL)
 # tzdata: predictable time zone handling
-RUN apk add --no-cache ca-certificates tzdata && \
+# libwebp: runtime shared library required by the WebP encoder
+RUN apk add --no-cache ca-certificates tzdata libwebp && \
     addgroup -S app && adduser -S -G app app
 
 WORKDIR /app
