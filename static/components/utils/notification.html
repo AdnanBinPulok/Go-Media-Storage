@@ -1,0 +1,86 @@
+<script>
+  const NOTIFICATION_STYLES = {
+    info: {
+      icon: "fas fa-info-circle",
+      wrapper: "bg-blue-600 text-white",
+      bar: "bg-blue-300",
+      bar_fill: "bg-blue-800/70"
+    },
+    success: {
+      icon: "fas fa-check-circle",
+      wrapper: "bg-green-600 text-white",
+      bar: "bg-green-300",
+      bar_fill: "bg-green-800/70"
+    },
+    warning: {
+      icon: "fas fa-exclamation-triangle",
+      wrapper: "bg-amber-500 text-white",
+      bar: "bg-amber-300",
+      bar_fill: "bg-amber-800/70"
+    },
+    error: {
+      icon: "fas fa-times-circle",
+      wrapper: "bg-red-600 text-white",
+      bar: "bg-red-300",
+      bar_fill: "bg-red-800/70"
+    }
+  };
+
+
+  function showNotification(message, type = "info", duration = 3500) {
+    console.log("Showing notification:", message, type, duration);
+
+    const style = NOTIFICATION_STYLES[type];
+
+    const container = document.createElement("div");
+    container.className = `
+      fixed top-4 right-4 z-[9999]
+      w-[90vw] sm:w-[360px]
+      rounded-lg shadow-xl overflow-hidden
+      transform opacity-0 scale-95 translate-y-[-10px]
+      transition-all duration-300 ease-out
+      ${style.wrapper}
+    `;
+
+    container.innerHTML = `
+      <div class="flex items-center gap-3 px-4 py-2">
+        <i class="${style.icon} text-lg mt-0.5"></i>
+        <div class="flex-1 text-sm leading-snug font-medium">
+          ${message}
+        </div>
+        <button class="ml-2 text-white/70 hover:text-white transition">
+          <i class="fas fa-times text-sm"></i>
+        </button>
+      </div>
+      <div class="h-1 w-full ${style.bar}">
+        <div class="h-full ${style.bar_fill} transition-all" style="width:100%"></div>
+      </div>
+    `;
+
+    document.body.appendChild(container);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      container.classList.remove("opacity-0", "scale-95", "translate-y-[-10px]");
+    });
+
+    // Progress bar animation
+    const bar = container.querySelector(".h-full");
+    setTimeout(() => {
+      bar.style.width = "0%";
+      bar.style.transitionDuration = `${duration}ms`;
+    }, 50);
+
+    // Close button
+    container.querySelector("button").onclick = () => close();
+
+    // Auto close
+    const closeTimeout = setTimeout(close, duration);
+
+    function close() {
+      clearTimeout(closeTimeout);
+      container.classList.add("opacity-0", "scale-95", "translate-y-[-10px]");
+      setTimeout(() => container.remove(), 300);
+    }
+  }
+</script>

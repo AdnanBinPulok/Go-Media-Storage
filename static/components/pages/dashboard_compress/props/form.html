@@ -1,0 +1,176 @@
+<section class="flex flex-col overflow-hidden rounded-lg border border-white/10 bg-secondary/10">
+    <!-- Header -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-secondary/30 px-4 py-3">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-compress-arrows-alt text-sm font-semibold text-primary/80"></i>
+            <h3 class="text-sm font-semibold text-text-secondary md:text-base">Compress Image</h3>
+        </div>
+        <span class="rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-muted">Images only</span>
+    </div>
+
+    <!-- Form -->
+    <form id="compress-form" class="p-4 md:p-6 space-y-5" novalidate onsubmit="handleCompress(event)">
+
+        <!-- Image URL -->
+        <div>
+            <label for="compress-file-url"
+                class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+                Image URL
+            </label>
+            <div class="flex items-center gap-2">
+                <input id="compress-file-url" type="url" placeholder="https://{{ .site.base_url }}/file/view/abc123.png"
+                    class="flex-1 rounded-lg border border-white/15 bg-secondary px-3 py-2 text-sm text-text-secondary outline-none transition-colors focus:border-highlight/60" />
+                <button type="button" onclick="copyCompressUrl()"
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-secondary/50 text-muted transition-all hover:border-highlight/30 hover:bg-secondary hover:text-text-secondary"
+                    title="Copy URL">
+                    <i class="fas fa-copy text-xs"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <!-- Quality -->
+            <div>
+                <label for="compress-quality"
+                    class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+                    Quality (1–100)
+                </label>
+                <input id="compress-quality" type="number" min="1" max="100" value="80"
+                    class="w-full rounded-lg border border-white/15 bg-secondary px-3 py-2 text-sm text-text-secondary outline-none transition-colors focus:border-highlight/60" />
+            </div>
+
+            <!-- Max Width -->
+            <div>
+                <label for="compress-max-width"
+                    class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+                    Max Width (px)
+                </label>
+                <input id="compress-max-width" type="number" min="0" placeholder="Leave empty for original width"
+                    class="w-full rounded-lg border border-white/15 bg-secondary px-3 py-2 text-sm text-text-secondary placeholder:text-muted/50 outline-none transition-colors focus:border-highlight/60" />
+            </div>
+        </div>
+
+        <!-- Checkboxes -->
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+            <label class="flex cursor-pointer items-center gap-2.5 select-none">
+                <input id="compress-lossless" type="checkbox"
+                    class="h-4 w-4 rounded border border-white/20 bg-secondary accent-highlight cursor-pointer" />
+                <span class="text-sm text-text-secondary">Lossless compression</span>
+            </label>
+        </div>
+
+        <div class="rounded-lg border border-white/10 bg-secondary/40 px-4 py-3">
+            <p class="text-xs text-muted leading-relaxed">
+                <i class="fas fa-info-circle mr-1 text-highlight/70"></i>
+                Compression runs in the background. Recommended defaults: <span class="text-text-secondary">Quality
+                    80</span>. Lossless re-encodes as PNG — ideal for screenshots or UI graphics.
+            </p>
+        </div>
+
+        <!-- Submit -->
+        <button id="compress-submit-btn" type="submit"
+            class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-btn-primary px-4 py-2.5 text-sm font-semibold text-btn-primary-text transition-colors hover:bg-btn-primary-hover disabled:cursor-not-allowed disabled:opacity-50">
+            <i class="fas fa-compress-arrows-alt"></i>
+            <span id="compress-submit-label">Compress Image</span>
+        </button>
+    </form>
+</section>
+
+<script>
+    (function () {
+        const fileUrlInput = document.getElementById('compress-file-url');
+
+        function getQueryParam(name) {
+            return new URLSearchParams(window.location.search).get(name) || '';
+        }
+
+        function extractStoredName(url) {
+            if (!url) return '';
+            const parts = url.split('/');
+            return parts[parts.length - 1] || '';
+        }
+
+        function copyCompressUrl() {
+            const val = fileUrlInput.value;
+            if (!val) return;
+            navigator.clipboard.writeText(val).then(function () {
+                showNotification('URL copied to clipboard', 'success');
+            }).catch(function () {
+                showNotification('Failed to copy URL', 'error');
+            });
+        }
+        window.copyCompressUrl = copyCompressUrl;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const fileUrl = getQueryParam('file_url');
+            if (fileUrl) {
+                fileUrlInput.value = decodeURIComponent(fileUrl);
+            }
+        });
+
+        async function handleCompress(event) {
+            event.preventDefault();
+
+            const fileUrl = fileUrlInput.value.trim();
+            if (!fileUrl) {
+                showNotification('Image URL is required', 'error');
+                return;
+            }
+
+            const storedName = extractStoredName(fileUrl);
+            if (!storedName) {
+                showNotification('Could not extract file ID from URL', 'error');
+                return;
+            }
+
+            const quality = parseInt(document.getElementById('compress-quality').value, 10);
+            if (isNaN(quality) || quality < 1 || quality > 100) {
+                showNotification('Quality must be between 1 and 100', 'error');
+                return;
+            }
+
+            const maxWidthRaw = document.getElementById('compress-max-width').value.trim();
+            const maxWidth = maxWidthRaw === '' ? 0 : parseInt(maxWidthRaw, 10);
+            if (isNaN(maxWidth) || maxWidth < 0) {
+                showNotification('Max width must be a positive number or empty', 'error');
+                return;
+            }
+
+            const lossless = document.getElementById('compress-lossless').checked;
+
+            const submitBtn = document.getElementById('compress-submit-btn');
+            const submitLabel = document.getElementById('compress-submit-label');
+            submitBtn.disabled = true;
+            submitLabel.textContent = 'Starting compression...';
+
+            try {
+                const response = await fetch('/api/frontend/compressor/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file_id: storedName,
+                        quality: quality,
+                        max_width: maxWidth,
+                        lossless: lossless,
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (response.status === 201 && result.success) {
+                    submitLabel.textContent = 'Compression Started';
+                    showNotification('Compression started successfully', 'success');
+                } else {
+                    submitBtn.disabled = false;
+                    submitLabel.textContent = 'Compress Image';
+                    showNotification(result.message || 'Failed to start compression', 'error');
+                }
+            } catch (error) {
+                submitBtn.disabled = false;
+                submitLabel.textContent = 'Compress Image';
+                showNotification('Request failed: ' + error.message, 'error');
+            }
+        }
+        window.handleCompress = handleCompress;
+    })();
+</script>

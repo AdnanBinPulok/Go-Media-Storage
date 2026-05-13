@@ -1,0 +1,59 @@
+<section class="rounded-xl border border-white/10 bg-background p-4 md:p-5">
+    <h2 class="text-base md:text-lg font-heading font-semibold text-text-secondary">Storage Overview</h2>
+
+    {{ with .status.storage }}
+    <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+        {{ with .total_files }}
+        <article class="rounded-lg border border-white/10 bg-secondary p-3">
+            <p class="text-muted">Total Files</p>
+            <p class="mt-1 text-lg font-semibold text-text-secondary">{{ . }}</p>
+        </article>
+        {{ end }}
+
+        {{ with .total_size }}
+        <article class="rounded-lg border border-white/10 bg-secondary p-3">
+            <p class="text-muted">Total Size</p>
+            <p class="mt-1 text-lg font-semibold text-text-secondary">{{ . }}</p>
+        </article>
+        {{ end }}
+
+        {{ with .available_space }}
+        <article class="rounded-lg border border-white/10 bg-secondary p-3">
+            <p class="text-muted">Available Space</p>
+            <p class="mt-1 text-lg font-semibold text-text-secondary">{{ . }}</p>
+        </article>
+        {{ end }}
+
+        {{ with .used_percent }}
+        <article class="rounded-lg border border-white/10 bg-secondary p-3">
+            <p class="text-muted">Used</p>
+            <p class="mt-1 text-lg font-semibold text-text-secondary">{{ . }}%</p>
+        </article>
+        {{ end }}
+    </div>
+
+    {{ else }}
+    <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+        <article class="rounded-lg border border-white/10 bg-secondary p-3">
+            <p class="text-muted">Total Files</p>
+            <p class="mt-1 text-lg font-semibold text-text-secondary">1342</p>
+        </article>
+
+        <article class="rounded-lg border border-white/10 bg-secondary p-3">
+            <p class="text-muted">Total Size</p>
+            <p class="mt-1 text-lg font-semibold text-text-secondary">18.7 GB</p>
+        </article>
+
+        <article class="rounded-lg border border-white/10 bg-secondary p-3">
+            <p class="text-muted">Available Space</p>
+            <p class="mt-1 text-lg font-semibold text-text-secondary">102.4 GB</p>
+        </article>
+
+        <article class="rounded-lg border border-white/10 bg-secondary p-3">
+            <p class="text-muted">Used</p>
+            <p class="mt-1 text-lg font-semibold text-text-secondary">15%</p>
+        </article>
+    </div>
+
+    {{ end }}
+</section>

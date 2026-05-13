@@ -1,0 +1,66 @@
+<section class="rounded-2xl border border-white/5 bg-secondary/15 p-3">
+    <div class="flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+        <div class="flex-1" id="dashboard-vault-search-section">
+            <label for="dashboard-vault-search" class="sr-only">Search vaults</label>
+            <div
+                class="group relative flex items-center gap-2 rounded-xl border border-white/10 bg-background/70 px-3 py-2.5 backdrop-blur-sm transition-all focus-within:border-highlight/50 focus-within:bg-background focus-within:shadow-lg focus-within:shadow-highlight/10">
+                <div
+                    class="flex h-6 w-6 items-center justify-center rounded-md bg-highlight/10 text-highlight transition-all group-focus-within:bg-highlight/20">
+                    <i class="fas fa-binoculars text-[11px]"></i>
+                </div>
+                <input id="dashboard-vault-search" type="text" placeholder="Find vault by name, ID, or key..."
+                    class="w-full bg-transparent pr-2 text-sm text-text-secondary outline-none placeholder:text-muted/80" />
+                <div
+                    class="hidden items-center gap-1 rounded-md border border-white/10 bg-secondary/40 px-2 py-1 text-[10px] text-muted md:inline-flex">
+                    <i class="fas fa-keyboard text-[9px]"></i>
+                    <span>Search</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-1.5" id="dashboard-vault-filters">
+            <label class="group relative cursor-pointer">
+                <input class="dashboard-vault-filter-radio peer sr-only" type="radio" name="dashboard-vault-filter"
+                    value="all" checked>
+                <div
+                    class="flex items-center gap-2 rounded-xl border border-white/10 bg-background/50 px-3 py-2.5 text-xs font-medium text-text-secondary transition-all peer-checked:border-highlight/40 peer-checked:bg-highlight/10 peer-checked:text-highlight peer-checked:shadow-lg peer-checked:shadow-highlight/10 hover:bg-background">
+                    <i class="fas fa-layer-group text-[10px]"></i>
+                    <span class="whitespace-nowrap">All</span>
+                </div>
+            </label>
+            <label class="group relative cursor-pointer">
+                <input class="dashboard-vault-filter-radio peer sr-only" type="radio" name="dashboard-vault-filter"
+                    value="active">
+                <div
+                    class="flex items-center gap-2 rounded-xl border border-white/10 bg-background/50 px-3 py-2.5 text-xs font-medium text-text-secondary transition-all peer-checked:border-success/40 peer-checked:bg-success/10 peer-checked:text-success peer-checked:shadow-lg peer-checked:shadow-success/10 hover:bg-background">
+                    <i class="fas fa-circle-check text-[10px]"></i>
+                    <span class="whitespace-nowrap">Active</span>
+                </div>
+            </label>
+            <label class="group relative cursor-pointer">
+                <input class="dashboard-vault-filter-radio peer sr-only" type="radio" name="dashboard-vault-filter"
+                    value="inactive">
+                <div
+                    class="flex items-center gap-2 rounded-xl border border-white/10 bg-background/50 px-3 py-2.5 text-xs font-medium text-text-secondary transition-all peer-checked:border-warning/40 peer-checked:bg-warning/10 peer-checked:text-warning peer-checked:shadow-lg peer-checked:shadow-warning/10 hover:bg-background">
+                    <i class="fas fa-circle-pause text-[10px]"></i>
+                    <span class="whitespace-nowrap">Inactive</span>
+                </div>
+            </label>
+        </div>
+    </div>
+</section>
+<script>
+    function getFilterAndSearchData() {
+        const searchInput = document.getElementById('dashboard-vault-search');
+        const searchQuery = searchInput ? searchInput.value.trim() : '';
+
+        const filterRadios = document.querySelectorAll('.dashboard-vault-filter-radio');
+        let filterValue = 'all';
+        filterRadios.forEach(radio => {
+            if (radio.checked) {
+                filterValue = radio.value;
+            }
+        });
+
+        return { searchQuery, filterValue };
+    }
+</script>

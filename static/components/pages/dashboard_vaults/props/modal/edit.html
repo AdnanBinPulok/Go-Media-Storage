@@ -1,0 +1,147 @@
+<script>
+    function openEditVaultModal(id) {
+        const existingModal = document.getElementById('editVaultModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const vaultData = typeof getVaultDataById === 'function' ? getVaultDataById(id) : null;
+        if (!vaultData) {
+            showPopupNotification('Vault not found. Please refresh and try again.', 'error');
+            return;
+        }
+
+        const safe = (value) => String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
+        const modal = document.createElement('div');
+        modal.id = 'editVaultModal';
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onclick="closeModal('editVaultModal')"></div>
+
+            <div class="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-secondary/95 shadow-2xl">
+                <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+                    <div>
+                        <h2 class="text-base font-semibold text-text-secondary">Edit Vault</h2>
+                        <p class="mt-0.5 text-xs text-muted">Update vault name and active status.</p>
+                    </div>
+                    <button type="button" onclick="closeModal('editVaultModal')"
+                        class="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-background/50 text-muted transition-all hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
+                        aria-label="Close edit vault modal">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+
+                <form id="editVaultForm" class="space-y-4 px-5 py-4" onsubmit="handleEditVaultSubmit(event, '${safe(vaultData.id)}')">
+                    <div>
+                        <label for="editVaultName" class="block text-xs font-semibold uppercase tracking-wide text-muted">Vault Name</label>
+                        <input id="editVaultName" name="name" type="text" required maxlength="120" value="${safe(vaultData.name || '')}"
+                            class="mt-2 w-full rounded-lg border border-white/10 bg-background/70 px-3.5 py-2.5 text-sm text-text-secondary outline-none transition-all placeholder:text-muted/70 focus:border-highlight/50 focus:bg-background" />
+                    </div>
+
+                    <div>
+                        <label for="editVaultMaxStorage" class="block text-xs font-semibold uppercase tracking-wide text-muted">Max Storage Capacity</label>
+                        <input id="editVaultMaxStorage" name="max_storage" type="text" placeholder="e.g. 1GB, 500MB (leave empty for unlimited)" value="${vaultData.storage_bytes_limit ? formatBytes(vaultData.storage_bytes_limit) : ''}"
+                            class="mt-2 w-full rounded-lg border border-white/10 bg-background/70 px-3.5 py-2.5 text-sm text-text-secondary outline-none transition-all placeholder:text-muted/70 focus:border-highlight/50 focus:bg-background" />
+                    </div>
+
+                    <label class="flex items-center gap-2.5 rounded-lg border border-white/10 bg-background/40 px-3.5 py-2.5">
+                        <input id="editVaultIsActive" name="is_active" type="checkbox"
+                            class="h-4 w-4 rounded border-white/20 bg-background text-highlight focus:ring-highlight" ${vaultData.is_active ? 'checked' : ''}>
+                        <span class="text-sm text-text-secondary">Set this vault as active</span>
+                    </label>
+                </form>
+
+                <div class="flex items-center justify-end gap-2 border-t border-white/10 px-5 py-4">
+                    <button type="button" onclick="closeModal('editVaultModal')"
+                        class="rounded-xl border border-white/10 bg-background/60 px-4 py-2 text-sm font-medium text-text-secondary transition-all hover:border-white/20 hover:bg-background">
+                        Cancel
+                    </button>
+                    <button type="submit" form="editVaultForm" id="editVaultSubmitBtn"
+                        class="rounded-xl bg-btn-primary px-4 py-2 text-sm font-semibold text-btn-primary-text shadow-lg shadow-btn-primary/20 transition-all hover:shadow-xl hover:shadow-btn-primary/30 disabled:cursor-not-allowed disabled:opacity-50">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const nameInput = document.getElementById('editVaultName');
+        if (nameInput) {
+            nameInput.focus();
+            nameInput.setSelectionRange(nameInput.value.length, nameInput.value.length);
+        }
+    }
+
+    async function handleEditVaultSubmit(event, vaultId) {
+        event.preventDefault();
+
+        const nameInput = document.getElementById('editVaultName');
+        const isActiveInput = document.getElementById('editVaultIsActive');
+        const maxStorageInput = document.getElementById('editVaultMaxStorage');
+        const submitButton = document.getElementById('editVaultSubmitBtn');
+
+        if (!nameInput || !submitButton) {
+            showPopupNotification('Edit form is not ready. Please try again.', 'error');
+            return;
+        }
+
+        let maxStorageBytes = 0;
+        if (maxStorageInput && maxStorageInput.value.trim() !== '') {
+            const match = maxStorageInput.value.trim().match(/^([\d.]+)\s*(KB|MB|GB|TB|PB|B)?$/i);
+            if (!match) {
+                showPopupNotification('Invalid storage format for Max Storage. Use values like 1GB, 500MB, etc.', 'warning');
+                return;
+            }
+            const val = parseFloat(match[1]);
+            const unit = match[2] ? match[2].toUpperCase() : 'B';
+            const multipliers = { 'B': 1, 'KB': 1024, 'MB': Math.pow(1024, 2), 'GB': Math.pow(1024, 3), 'TB': Math.pow(1024, 4), 'PB': Math.pow(1024, 5) };
+            maxStorageBytes = Math.floor(val * multipliers[unit]);
+        }
+
+        const payload = {
+            id: Number(vaultId),
+            name: nameInput.value.trim(),
+            is_active: !!(isActiveInput && isActiveInput.checked),
+            storage_bytes_limit: maxStorageBytes
+        };
+
+        if (!payload.name) {
+            showPopupNotification('Vault name is required.', 'warning');
+            return;
+        }
+
+        const originalButtonContent = submitButton.innerHTML;
+        submitButton.disabled = true;
+        submitButton.innerHTML = `<i class="fas fa-spinner animate-spin text-sm"></i>`;
+
+        try {
+            const response = await fetch('/api/vaults/edit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || result.message || 'Failed to update vault');
+            }
+
+            closeModal('editVaultModal');
+            refreshVaults(false);
+            showNotification('Vault updated successfully!', 'success', 800);
+        } catch (error) {
+            console.error('Network error while updating vault:', error);
+            showPopupNotification(error.message || 'An error occurred while updating the vault.', 'error');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalButtonContent;
+        }
+    }
+</script>

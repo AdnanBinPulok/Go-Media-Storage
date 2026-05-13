@@ -1,0 +1,86 @@
+<div id="dashboard-upload-panel"
+    class="hidden flex-col overflow-hidden rounded-lg border border-highlight/30 bg-highlight/5">
+    <!-- Header -->
+    <div
+        class="flex flex-wrap items-center justify-between gap-3 border-b border-highlight/20 bg-highlight/10 px-4 py-3">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-check-circle text-sm font-semibold text-highlight"></i>
+            <h3 class="text-sm font-semibold text-highlight md:text-base">Upload Results</h3>
+        </div>
+        <div class="flex items-center gap-1.5 text-xs font-medium">
+            <span id="dashboard-upload-count" class="rounded-md bg-highlight/20 px-2 py-0.5 text-highlight">0
+                files</span>
+        </div>
+    </div>
+
+    <!-- Results List -->
+    <div id="dashboard-upload-results"
+        class="custom-scrollbar max-h-[250px] overflow-y-auto p-1.5 text-sm text-muted md:p-2">
+        <!-- JS fills this -->
+    </div>
+</div>
+
+<script>
+    function hideUploadResults() {
+        if (uploadUI.uploadResults) {
+            uploadUI.uploadResults.innerHTML = '';
+        }
+        if (uploadUI.uploadCount) {
+            uploadUI.uploadCount.textContent = '0 files';
+        }
+        const panel = document.getElementById('dashboard-upload-panel');
+        if (panel) {
+            panel.classList.add('hidden');
+            panel.classList.remove('flex');
+        }
+    }
+
+    function renderUploadResults(items) {
+        if (!uploadUI.uploadResults) return;
+
+        const list = Array.isArray(items) ? items : [];
+        if (uploadUI.uploadCount) {
+            uploadUI.uploadCount.textContent = list.length + (list.length === 1 ? ' file' : ' files');
+        }
+
+        const panel = document.getElementById('dashboard-upload-panel');
+        if (list.length === 0) {
+            hideUploadResults();
+            return;
+        }
+
+        const rows = list.map(function (item, index) {
+            const name = escapeHtml(item.original_name || item.stored_name || 'file');
+            const size = formatBytes(item.file_size || 0);
+            const viewUrl = item.url && item.url.view ? item.url.view : '';
+            const downloadUrl = item.url && item.url.download ? item.url.download : '';
+
+            return `
+                <div class="group flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-highlight/10">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-highlight/20 text-highlight">
+                            <i class="fas fa-check text-xs"></i>
+                        </span>
+                        <div class="flex min-w-0 flex-col justify-center">
+                            <p class="truncate text-sm font-medium text-text-secondary">${name}</p>
+                            <p class="truncate text-[11px] text-muted/70">
+                                <span class="text-highlight/70">#${index + 1}</span>
+                                <span class="mx-1 text-white/10">•</span> ${size}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2 text-xs">
+                        ${viewUrl ? `<a href="${viewUrl}" target="_blank" rel="noopener" class="rounded-md bg-highlight/20 px-2.5 py-1.5 font-medium text-highlight transition-colors hover:bg-highlight/30">View</a>` : ''}
+                        ${downloadUrl ? `<a href="${downloadUrl}" target="_blank" rel="noopener" class="rounded-md bg-secondary/60 px-2.5 py-1.5 font-medium text-muted transition-colors hover:bg-secondary hover:text-text-secondary">Download</a>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        uploadUI.uploadResults.innerHTML = `<div class="flex flex-col gap-0.5">${rows}</div>`;
+        if (panel) {
+            panel.classList.remove('hidden');
+            panel.classList.add('flex');
+        }
+    }
+</script>

@@ -1,0 +1,34 @@
+﻿<section class="max-w-full bg-background px-6 py-20 border-b border-white/5">
+    <div class="w-full mb-12">
+        <h2 class="text-2xl font-heading font-semibold text-text-secondary">Core Infrastructure</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+        <!-- Card 1 -->
+        <article class="p-6 bg-secondary border border-white/10 rounded">
+            <div class="mb-4 text-accent text-xl">
+                <i class="fas fa-network-wired"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-text-secondary mb-2 whitespace-nowrap">Edge Proxy Routing</h3>
+            <p class="text-sm text-muted">Configured for reverse proxy headers (Cloudflare, Nginx). Identifies real client IPs and caches small files at the edge to reduce core load.</p>
+        </article>
+        
+        <!-- Card 2 -->
+        <article class="p-6 bg-secondary border border-white/10 rounded">
+            <div class="mb-4 text-highlight text-xl">
+                <i class="fas fa-server"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-text-secondary mb-2 whitespace-nowrap">Fiber API Layer</h3>
+            <p class="text-sm text-muted">High-performance HTTP routing. Serves local assets directly from memory and static paths with explicit JSON error handling.</p>
+        </article>
+
+        <!-- Card 3 -->
+        <article class="p-6 bg-secondary border border-white/10 rounded">
+            <div class="mb-4 text-success text-xl">
+                <i class="fas fa-folder-tree"></i>
+            </div>
+            <h3 class="text-lg font-semibold text-text-secondary mb-2 whitespace-nowrap">Structured Storage</h3>
+            <p class="text-sm text-muted">Filesystem persistence mapped via JSON data layer. Isolates media types neatly within the assets/ and data/ directories.</p>
+        </article>
+    </div>
+</section>

@@ -1,0 +1,54 @@
+<script>
+    function capitalizeFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+
+    function copyToClipboard(button, text, coolDown = 1000) {
+        navigator.clipboard.writeText(text).then(function () {
+            const originalInnerHTML = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check text-green-500"></i>';
+            setTimeout(() => {
+                button.innerHTML = originalInnerHTML;
+            }, coolDown);
+        }, function (err) {
+            console.error('Could not copy text: ', err);
+        });
+    }
+
+    function formatDateTime(timeString, with_time = true, with_seconds = true, hour12 = true) {
+        const options = {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        };
+        if (with_time) {
+            options.hour = 'numeric';
+            options.minute = 'numeric';
+        }
+        if (with_seconds) {
+            options.second = 'numeric';
+        }
+        options.hour12 = hour12;
+
+        const date = new Date(timeString);
+        return date.toLocaleString(undefined, options);
+    }
+
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+
+    function formatBytes(bytes) {
+        if (!bytes || bytes <= 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        const idx = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+        const value = bytes / Math.pow(1024, idx);
+        return value.toFixed(value >= 10 || idx === 0 ? 0 : 1) + ' ' + units[idx];
+    }
+
+</script>

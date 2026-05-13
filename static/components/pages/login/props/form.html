@@ -1,0 +1,84 @@
+<section class="rounded-2xl border border-white/10 bg-background/80 p-6 md:p-8 shadow-soft backdrop-blur-md">
+    <div class="mb-8 text-center">
+        <h2 class="text-2xl font-heading font-bold text-text-secondary tracking-tight">Welcome Back</h2>
+        <p class="text-sm text-muted mt-2">Sign in to your account</p>
+    </div>
+
+    <form id="login-form" class="space-y-5" onsubmit="handleLogin(event)">
+        <div class="space-y-2">
+            <label for="login-email" class="text-sm font-medium text-text-secondary">Email Address</label>
+            <input id="login-email" name="email" type="email" placeholder="name@example.com"
+                class="w-full rounded-xl border border-white/10 bg-secondary/50 px-4 py-3 text-sm text-text-secondary placeholder:text-muted/70 focus:bg-secondary focus:border-link focus:outline-none focus:ring-1 focus:ring-link/50 transition-all"
+                autocomplete="email" required>
+        </div>
+
+        <div class="space-y-2">
+            <div class="flex items-center justify-between">
+                <label for="login-password" class="text-sm font-medium text-text-secondary">Password</label>
+                <a href="#" class="text-xs font-medium text-link hover:text-highlight transition-colors">Forgot?</a>
+            </div>
+            <input id="login-password" name="password" type="password" placeholder="��������"
+                class="w-full rounded-xl border border-white/10 bg-secondary/50 px-4 py-3 text-sm text-text-secondary placeholder:text-muted/70 focus:bg-secondary focus:border-link focus:outline-none focus:ring-1 focus:ring-link/50 transition-all"
+                autocomplete="current-password" required>
+        </div>
+
+        <div class="flex items-center gap-2 pt-1 pb-2">
+            <input type="checkbox" id="login-remember" name="remember_me"
+                class="h-4 w-4 rounded border-white/20 bg-secondary/50 text-accent focus:ring-accent focus:ring-opacity-50 cursor-pointer">
+            <label for="login-remember" class="text-sm text-muted cursor-pointer select-none">Stay signed in</label>
+        </div>
+
+        <button type="submit"
+            class="w-full rounded-xl bg-btn-primary px-4 py-3 text-sm font-semibold text-btn-primary-text transition-all hover:bg-btn-primary-hover shadow-sm hover:shadow active:scale-[0.98]">
+            Sign In
+        </button>
+
+        <p class="text-center text-sm text-muted pt-6">
+            Don't have an account?
+            <a href="/signup" class="text-link hover:text-highlight transition-colors font-medium ml-1">Create one</a>
+        </p>
+    </form>
+</section>
+<script>
+    async function handleLogin(event) {
+        event.preventDefault();
+
+        const form = event.target;
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        const originalContent = submitButton.innerHTML;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Signing In...';
+
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: form.email.value,
+                    password: form.password.value,
+                    remember_me: form.remember_me.checked
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || result.message || 'Login failed');
+            }
+
+            showPopupNotification(result.message, "success");
+
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 500);
+
+        } catch (error) {
+            showPopupNotification(error.message, "error");
+        } finally {
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalContent;
+        }
+    }
+</script>

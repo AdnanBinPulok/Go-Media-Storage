@@ -1,0 +1,99 @@
+<footer class="bg-secondary border-t border-text-primary/10 pt-16 pb-8">
+    <div class="max-w-[90%] md:max-w-[80%] mx-auto px-2 md:px-4 lg:px-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
+            <!-- Brand Section -->
+            <div class="col-span-2 lg:col-span-2">
+                <a href="/" class="flex items-center gap-2 mb-6">
+                    {{ if .site.favicon }}
+                    <img src="{{ .site.favicon }}" alt="Media Storage Logo" class="h-8 w-auto">
+                    {{ end }}
+                    <span class="text-xl font-serif font-bold text-text-secondary tracking-tight leading-none">
+                        {{ .site.title }}
+                    </span>
+                </a>
+                <p class="text-sm text-muted leading-relaxed mb-6 max-w-sm">
+                    {{ .site.description }}
+                </p>
+                <div class="flex gap-4">
+                    {{ if .site.social_links.website }}
+                    <a href="{{ .site.social_links.website }}" target="_blank" rel="noopener"
+                        class="text-muted-2 hover:text-link transition-colors text-xl">
+                        <i class="fas fa-globe"></i>
+                    </a>
+                    {{ end }}
+
+                    {{ if .site.social_links.github }}
+                    <a href="{{ .site.social_links.github }}" target="_blank" rel="noopener"
+                        class="text-muted-2 hover:text-link transition-colors text-xl">
+                        <i class="fab fa-github"></i>
+                    </a>
+                    {{ end }}
+
+                    {{ if .site.social_links.linkedin }}
+                    <a href="{{ .site.social_links.linkedin }}" target="_blank" rel="noopener noreferrer"
+                        class="text-muted-2 hover:text-link transition-colors text-xl">
+                        <i class="fab fa-linkedin"></i>
+                    </a>
+                    {{ end }}
+
+                    {{ if .site.social_links.facebook }}
+                    <a href="{{ .site.social_links.facebook }}" target="_blank" rel="noopener noreferrer"
+                        class="text-muted-2 hover:text-link transition-colors text-xl">
+                        <i class="fab fa-facebook"></i>
+                    </a>
+                    {{ end }}
+
+                    {{ if .site.social_links.instagram }}
+                    <a href="{{ .site.social_links.instagram }}" target="_blank" rel="noopener noreferrer"
+                        class="text-muted-2 hover:text-link transition-colors text-xl">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    {{ end }}
+                </div>
+            </div>
+
+            <!-- Explore Links -->
+            <div>
+                <h4 class="font-bold text-text-secondary mb-4">Explore</h4>
+                <ul class="space-y-3 text-sm">
+                    <li><a href="/" class="text-muted hover:text-link transition-colors">Home</a></li>
+                    <li><a href="/theme" class="text-muted hover:text-link transition-colors">Theme Preview</a></li>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- API Links -->
+            <div>
+                <h4 class="font-bold text-text-secondary mb-4">API</h4>
+                <ul class="space-y-3 text-sm">
+                    <li><a href="/api/ping" class="text-muted hover:text-link transition-colors">GET /api/ping</a>
+                    </li>
+                    <li><a href="/api/ip" class="text-muted hover:text-link transition-colors">GET /api/ip</a></li>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Project Links -->
+            <div>
+                <h4 class="font-bold text-text-secondary mb-4">Project</h4>
+                <ul class="space-y-3 text-sm">
+                    <li><a href="https://github.com/Gliders-Development" target="_blank" rel="noopener noreferrer"
+                            class="text-muted hover:text-link transition-colors">GitHub Organization</a></li>
+                    <li><a href="{{ .site.social_links.website }}" target="_blank" rel="noopener noreferrer"
+                            class="text-muted hover:text-link transition-colors">Official Website</a></li>
+                    <li><span class="text-muted">Version {{ .site.version }}</span></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="border-t border-text-primary/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p class="text-sm text-muted-2 text-center md:text-left">
+                &copy; 2026 {{ .site.title }}. All rights reserved.
+            </p>
+            <p class="text-sm text-muted-2 flex items-center gap-1">
+                Built by {{ .site.author }}.
+            </p>
+        </div>
+    </div>
+</footer>

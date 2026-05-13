@@ -1,0 +1,41 @@
+﻿<section class="max-w-full bg-background px-6 py-20 lg:py-32">
+    <div class="w-full">
+        <div class="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded border border-white/10 bg-secondary">
+            <span class="w-2 h-2 rounded-full bg-success"></span>
+            <span class="text-xs font-mono text-muted uppercase tracking-wide">Version 1.25</span>
+        </div>
+
+        <h1 class="text-4xl sm:text-5xl lg:text-7xl font-heading font-bold text-text-secondary leading-tight mb-6">
+            Go Media Storage
+        </h1>
+
+        <p class="text-lg md:text-xl text-muted max-w-3xl mb-10">
+            {{ .site.description }} Engineered with Go and Fiber. Optimized for fast asset delivery and structured file
+            persistence.
+        </p>
+
+        {{ if .user }}
+        <div class="flex flex-wrap items-center gap-4">
+            <a href="/dashboard/upload"
+                class="px-6 py-3 bg-btn-primary text-btn-primary-text font-semibold rounded hover:bg-btn-primary-hover transition-colors">
+                Upload a File
+            </a>
+            <a href="/vaults"
+                class="px-6 py-3 bg-secondary text-text-secondary font-medium rounded border border-white/10 hover:bg-add-to-cart transition-colors">
+                View Vaults
+            </a>
+        </div>
+        {{ else }}
+        <div class="flex flex-wrap items-center gap-4">
+            <a href="/api/ping"
+                class="px-6 py-3 bg-btn-primary text-btn-primary-text font-semibold rounded hover:bg-btn-primary-hover transition-colors">
+                Check API Status
+            </a>
+            <a href="/theme"
+                class="px-6 py-3 bg-secondary text-text-secondary font-medium rounded border border-white/10 hover:bg-add-to-cart transition-colors">
+                View Theme Config
+            </a>
+        </div>
+        {{ end }}
+    </div>
+</section>

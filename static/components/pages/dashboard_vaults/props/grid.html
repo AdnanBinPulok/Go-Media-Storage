@@ -1,0 +1,329 @@
+<section class="rounded-2xl border border-white/5 bg-background/60 shadow-sm">
+    <div class="flex items-center justify-between border-b border-white/5 px-4 py-3.5">
+        <div class="flex items-center gap-2.5">
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-highlight/10">
+                <i class="fas fa-table-cells-large text-xs text-highlight"></i>
+            </div>
+            <h2 class="text-sm font-semibold text-text-secondary">Vault Collection</h2>
+        </div>
+        <div class="text-xs text-muted">
+            <i class="fas fa-info-circle mr-1"></i>
+            <span id="dashboard-vault-pagination-info">Showing 0 of 0 vaults</span>
+        </div>
+    </div>
+    <div id="dashboard-vault-grid" class="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 2xl:grid-cols-3"></div>
+    <div id="dashboard-vault-pagination" class="flex items-center justify-end gap-2 border-t border-white/5 px-4 py-3">
+        <button type="button" id="dashboard-vault-pagination-prev"
+            class="group flex items-center gap-2 rounded-xl border border-white/10 bg-secondary/50 px-3 py-2 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+            disabled>
+            <i class="fas fa-chevron-left text-[10px]"></i>
+            <span>Previous</span>
+        </button>
+        <button type="button" id="dashboard-vault-pagination-next"
+            class="group flex items-center gap-2 rounded-xl border border-white/10 bg-secondary/50 px-3 py-2 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+            disabled>
+            <span>Next</span>
+            <i class="fas fa-chevron-right text-[10px]"></i>
+        </button>
+    </div>
+</section>
+<script>
+    let currentPage = 1;
+    const limitPerPage = 9;
+
+    const storage_bytes_limit = parseInt('{{ .user.storage_bytes_limit }}', 10) || 0; // 0 means unlimited
+
+    let cachedVaults = [];
+
+    function escapeHtml(text) {
+        return String(text || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function maskApiKey(apiKey) {
+        const value = String(apiKey || '');
+        if (!value) return 'Not configured';
+        if (value.length <= 8) return '****';
+        return value.slice(0, 4) + '******' + value.slice(-4);
+    }
+
+
+    function formatCount(value) {
+        const count = Number(value || 0);
+        if (Number.isNaN(count)) return '0';
+        return count.toLocaleString();
+    }
+
+
+    function normalizeVault(input) {
+        return {
+            id: input.id,
+            name: input.name || 'Untitled Vault',
+            api_key: input.api_key || '',
+            is_active: !!input.is_active,
+            total_files: Number(input.total_files ?? input.total_media_files ?? input.totalFiles ?? 0),
+            total_size_bytes: Number(input.total_size_bytes ?? input.totalSizeBytes ?? 0),
+            storage_bytes_limit: Number(input.storage_bytes_limit ?? input.maxSizeBytes ?? 0),
+            created_at: input.created_at || input.createdAtUTC || '',
+            updated_at: input.updated_at || input.updatedAtUTC || ''
+        };
+    }
+
+    function renderVaultEmptyState() {
+        const grid = document.getElementById('dashboard-vault-grid');
+        if (!grid) return;
+
+        grid.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-secondary/20 p-12 text-center">
+                <div class="flex h-20 w-20 items-center justify-center rounded-full bg-secondary/40">
+                    <i class="fas fa-inbox text-3xl text-muted/60"></i>
+                </div>
+                <h3 class="mt-4 text-base font-semibold text-text-secondary">No Vaults Found</h3>
+                <p class="mt-1.5 text-sm text-muted">Create your first vault to start managing your API keys securely.</p>
+                <button onclick="document.getElementById('dashboard-vault-new-btn').click()" class="mt-5 rounded-xl bg-highlight/90 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-highlight">
+                    <i class="fas fa-plus mr-2"></i>Create Vault
+                </button>
+            </div>
+        `;
+    }
+
+    function renderVaultLoadingState() {
+        const grid = document.getElementById('dashboard-vault-grid');
+        if (!grid) return;
+
+        grid.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-secondary/20 p-12 text-center">
+                <div class="relative">
+                    <div class="absolute inset-0 animate-ping rounded-full bg-highlight/20"></div>
+                    <div class="relative flex h-16 w-16 items-center justify-center rounded-full bg-highlight/10">
+                        <i class="fas fa-spinner animate-spin text-2xl text-highlight"></i>
+                    </div>
+                </div>
+                <p class="mt-6 text-sm font-medium text-muted">Loading your vaults...</p>
+            </div>
+        `;
+    }
+
+
+
+    function renderVaultGrid(vaults) {
+        const grid = document.getElementById('dashboard-vault-grid');
+        if (!grid) {
+            console.error('Vault grid element not found');
+            return;
+        }
+
+        if (!vaults || vaults.length === 0) {
+            renderVaultEmptyState();
+            return;
+        }
+
+        grid.innerHTML = '';
+
+        vaults.map(function (raw) {
+            const vault = normalizeVault(raw);
+            const statusBadgeClass = vault.is_active
+                ? 'bg-success/15 text-success border-success/30'
+                : 'bg-warning/15 text-warning border-warning/30';
+            const statusIconClass = vault.is_active ? 'fa-circle-check text-success' : 'fa-circle-pause text-warning';
+            const statusText = vault.is_active ? 'Active' : 'Inactive';
+
+            const vaultItem = document.createElement('div');
+            vaultItem.className = 'group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-secondary/20 to-secondary/10 shadow-sm transition-all hover:border-highlight/20 hover:shadow-lg hover:shadow-highlight/5 vault-item';
+            vaultItem.innerHTML = `
+                <div class="relative p-4">
+                    <div class="absolute right-3 top-3 flex gap-1.5">
+                        <button type="button" onclick="copyToClipboard(this, '${escapeHtml(vault.api_key)}')" class="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-background/70 text-[10px] text-muted backdrop-blur-sm transition-all hover:border-highlight/40 hover:bg-background hover:text-highlight" title="Copy API key">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button type="button" onclick="openEditVaultModal('${vault.id}')" class="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-background/70 text-[10px] text-muted backdrop-blur-sm transition-all hover:border-highlight/40 hover:bg-background hover:text-highlight" title="Edit vault">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button type="button" onclick="openDeleteVaultModal('${vault.id}')" class="flex h-7 w-7 items-center justify-center rounded-lg border border-danger/20 bg-background/70 text-[10px] text-danger/50 backdrop-blur-sm transition-all hover:border-danger/40 hover:bg-danger/10 hover:text-danger" title="Delete vault">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-start gap-3 pr-16">
+                        <div class="relative mt-0.5">
+                            <div class="absolute -inset-1 rounded-xl bg-highlight/10 blur-sm"></div>
+                            <div class="relative flex h-10 w-10 items-center justify-center rounded-xl border border-highlight/20 bg-gradient-to-br from-highlight/10 to-highlight/5">
+                                <i class="fas fa-vault text-sm text-highlight"></i>
+                            </div>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="truncate text-base font-bold text-text-secondary">${escapeHtml(vault.name)}</h3>
+                            <div class="mt-1 flex items-center gap-2">
+                                <span class="text-xs text-muted">ID ${escapeHtml(vault.id)}</span>
+                                <span class="h-3 w-px bg-white/10"></span>
+                                <span class="inline-flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[10px] font-semibold ${statusBadgeClass}">
+                                    <i class="fas ${statusIconClass}"></i>
+                                    <span>${statusText}</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 rounded-xl border border-white/10 bg-background/40 p-3 backdrop-blur-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">API Key</span>
+                            <span class="rounded-md bg-highlight/10 px-2 py-0.5 font-mono text-[10px] text-highlight">Secured</span>
+                        </div>
+                        <p class="mt-1.5 truncate font-mono text-xs text-text-secondary">${escapeHtml(maskApiKey(vault.api_key))}</p>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-2">
+                        <div class="rounded-xl border border-white/10 bg-background/40 p-2.5 backdrop-blur-sm">
+                            <div class="flex items-center gap-1.5">
+                                <i class="fas fa-file-alt text-[10px] text-highlight"></i>
+                                <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">Files</span>
+                            </div>
+                            <p class="mt-1 text-lg font-bold text-highlight">${escapeHtml(formatCount(vault.total_files))}</p>
+                        </div>
+                        <div class="rounded-xl border border-white/10 bg-background/40 p-2.5 backdrop-blur-sm">
+                            <div class="flex items-center gap-1.5">
+                                <i class="fas fa-hard-drive text-[10px] text-muted"></i>
+                                <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">Storage</span>
+                            </div>
+                            <p class="mt-1 truncate text-xs text-text-secondary">${escapeHtml(formatBytes(vault.total_size_bytes))} / ${vault.storage_bytes_limit > 0 ? escapeHtml(formatBytes(vault.storage_bytes_limit)) : '∞'}</p>
+                        </div>
+                        <div class="rounded-xl border border-white/10 bg-background/40 p-2.5 backdrop-blur-sm">
+                            <div class="flex items-center gap-1.5">
+                                <i class="fas fa-clock text-[10px] text-muted"></i>
+                                <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">Updated</span>
+                            </div>
+                            <p class="mt-1 truncate text-xs text-text-secondary">${escapeHtml(formatDateTime(vault.updated_at, true, false, true))}</p>
+                        </div>
+                        <div class="rounded-xl border border-white/10 bg-background/40 p-2.5 backdrop-blur-sm">
+                            <div class="flex items-center gap-1.5">
+                                <i class="fas fa-calendar text-[10px] text-muted"></i>
+                                <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">Created</span>
+                            </div>
+                            <p class="mt-1 truncate text-xs text-text-secondary">${escapeHtml(formatDateTime(vault.created_at, true, false, true))}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            grid.appendChild(vaultItem);
+        });
+    }
+
+    function getVaultDataById(id) {
+        return cachedVaults.find(v => String(v.id) === String(id));
+    }
+
+    function getQueryString() {
+        const { searchQuery, filterValue } = getFilterAndSearchData();
+
+        const params = new URLSearchParams();
+        if (searchQuery) {
+            params.append('search', searchQuery);
+        }
+        if (filterValue && filterValue !== 'all') {
+            params.append('is_active', filterValue === 'active' ? 'true' : 'false');
+        }
+
+        params.append('page', currentPage);
+        params.append('limit', limitPerPage);
+
+        return params.toString();
+    }
+
+    async function fetchVaults(showLoading = true) {
+        if (showLoading) {
+            renderVaultLoadingState();
+        }
+        try {
+            const response = await fetch(`/api/vaults?${getQueryString()}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch vaults');
+            }
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || data.message || 'Failed to fetch vaults');
+            }
+
+            cachedVaults = data.data || data.vaults || [];
+
+            renderVaultGrid(cachedVaults);
+            renderStats(data.stats || {});
+            // "meta": {
+            //     "limit": 9,
+            //     "page": 1,
+            //     "total_items": 11,
+            //     "total_pages": 2
+            // },
+            renderPagination(data.meta || {});
+        } catch (error) {
+            console.error('Error fetching vaults:', error);
+            showNotification(error.message, 'error');
+            renderVaultGrid([]);
+            renderStats({ total: 0, active: 0, inactive: 0 });
+            renderPagination({});
+        }
+    }
+
+    function renderPagination(meta) {
+        const pageInfo = document.getElementById('dashboard-vault-pagination-info');
+        const prevButton = document.getElementById('dashboard-vault-pagination-prev');
+        const nextButton = document.getElementById('dashboard-vault-pagination-next');
+
+        const totalItems = Number(meta.total_items || 0);
+        const totalPages = Number(meta.total_pages || 1);
+        const currentPageNum = Number(meta.page || 1);
+
+        if (pageInfo) {
+            pageInfo.textContent = `Showing ${totalItems > 0 ? ((currentPageNum - 1) * limitPerPage + 1) : 0} to ${Math.min(currentPageNum * limitPerPage, totalItems)} of ${totalItems} vaults`;
+        }
+
+        if (prevButton) {
+            prevButton.disabled = currentPageNum <= 1;
+            prevButton.onclick = function () {
+                if (currentPageNum > 1) {
+                    currentPage--;
+                    fetchVaults();
+                }
+            };
+        }
+
+        if (nextButton) {
+            nextButton.disabled = currentPageNum >= totalPages;
+            nextButton.onclick = function () {
+                if (currentPageNum < totalPages) {
+                    currentPage++;
+                    fetchVaults();
+                }
+            };
+        }
+    }
+
+    function refreshVaults(resetPage = true) {
+        if (resetPage) {
+            currentPage = 1;
+        }
+        fetchVaults();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('dashboard-vault-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                currentPage = 1;
+                fetchVaults();
+            });
+        }
+
+        document.querySelectorAll('.dashboard-vault-filter-radio').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                if (!radio.checked) return;
+                currentPage = 1;
+                fetchVaults();
+            });
+        });
+
+        fetchVaults();
+    });
+
+</script>

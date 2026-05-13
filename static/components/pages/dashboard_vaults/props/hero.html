@@ -1,0 +1,67 @@
+<section
+    class="relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-secondary/20 via-background/95 to-secondary/30 shadow-sm">
+    <div class="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px]"></div>
+    <div class="relative px-4 py-4 sm:px-5 sm:py-4.5">
+        <div class="flex flex-col gap-3 sm:gap-3.5 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex items-start gap-3 sm:items-center">
+                <div class="relative">
+                    <div class="absolute -inset-1 rounded-xl bg-highlight/20 blur-sm"></div>
+                    <div
+                        class="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-highlight/30 bg-gradient-to-br from-highlight/20 to-highlight/5 sm:h-11 sm:w-11">
+                        <i class="fas fa-vault text-base text-highlight"></i>
+                    </div>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-base font-bold text-text-secondary sm:text-lg">Vaults</h1>
+                    <p class="text-xs text-muted sm:text-sm">Secure API Key Management</p>
+                </div>
+            </div>
+            <div
+                class="flex w-full flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between lg:w-auto lg:justify-end">
+                <div id="dashboard-vault-stats"
+                    class="grid w-full grid-cols-3 gap-2 sm:w-auto sm:flex sm:items-center sm:gap-2">
+                    <div
+                        class="flex items-baseline justify-center gap-1 rounded-lg bg-background/50 px-2.5 py-1.5 backdrop-blur-sm sm:justify-start">
+                        <span class="text-[10px] font-medium uppercase tracking-wide text-muted">Total</span>
+                        <span data-stat="total" class="text-sm font-bold text-text-secondary"
+                            id="dashboard-vault-total">0</span>
+                    </div>
+                    <div class="hidden h-4 w-px bg-white/10 sm:block"></div>
+                    <div
+                        class="flex items-baseline justify-center gap-1 rounded-lg bg-success/5 px-2.5 py-1.5 sm:justify-start">
+                        <span class="text-[10px] font-medium uppercase tracking-wide text-success/70">Active</span>
+                        <span data-stat="active" class="text-sm font-bold text-success"
+                            id="dashboard-vault-active">0</span>
+                    </div>
+                    <div
+                        class="flex items-baseline justify-center gap-1 rounded-lg bg-warning/5 px-2.5 py-1.5 sm:justify-start">
+                        <span class="text-[10px] font-medium uppercase tracking-wide text-warning/70">Inactive</span>
+                        <span data-stat="inactive" class="text-sm font-bold text-warning"
+                            id="dashboard-vault-inactive">0</span>
+                    </div>
+                </div>
+                <button type="button" id="dashboard-vault-new-btn" onclick="openAddVaultModal()"
+                    class="group relative w-full overflow-hidden rounded-xl bg-btn-primary px-4 py-2 text-sm font-semibold text-btn-primary-text shadow-lg shadow-btn-primary/20 transition-all hover:shadow-xl hover:shadow-btn-primary/30 sm:w-auto">
+                    <div
+                        class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700">
+                    </div>
+                    <span class="relative flex items-center justify-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        <span>Create Vault</span>
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+<script>
+    function renderStats(stats) {
+        const totalStat = document.getElementById('dashboard-vault-total');
+        const activeStat = document.getElementById('dashboard-vault-active');
+        const inactiveStat = document.getElementById('dashboard-vault-inactive');
+
+        if (totalStat) totalStat.textContent = String(stats.total || 0);
+        if (activeStat) activeStat.textContent = String(stats.active || 0);
+        if (inactiveStat) inactiveStat.textContent = String(stats.inactive || 0);
+    }
+</script>

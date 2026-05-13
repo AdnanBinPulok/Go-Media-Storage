@@ -1,0 +1,11 @@
+{{ if .user }}
+<a href="/dashboard"
+    class="hidden sm:inline-flex items-center justify-center rounded-full bg-btn-primary px-4 py-2 text-sm font-semibold text-btn-primary-text transition-colors hover:bg-btn-primary-hover focus:outline-none focus:ring-2 focus:ring-highlight/70 focus:ring-offset-0">
+    Dashboard
+</a>
+{{ else }}
+<a href="/login"
+    class="hidden sm:inline-flex items-center justify-center rounded-full bg-btn-primary px-4 py-2 text-sm font-semibold text-btn-primary-text transition-colors hover:bg-btn-primary-hover focus:outline-none focus:ring-2 focus:ring-highlight/70 focus:ring-offset-0">
+    Login
+</a>
+{{ end }}

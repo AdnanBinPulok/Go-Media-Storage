@@ -1,0 +1,60 @@
+<section class="rounded-xl border border-white/10 bg-background p-4 md:p-5">
+    <h2 class="text-base md:text-lg font-heading font-semibold text-text-secondary">Service Health</h2>
+
+    {{ with .status.services }}
+    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+        {{ range . }}
+        <article class="rounded-lg border border-white/10 bg-secondary px-4 py-3">
+            <div class="flex items-center justify-between gap-3">
+                {{ with .name }}<p class="font-medium text-text-secondary">{{ . }}</p>{{ end }}
+                {{ with .state }}<span
+                    class="rounded border border-white/10 bg-background px-2 py-0.5 text-[11px] font-mono text-success">{{
+                    . }}</span>{{ end }}
+            </div>
+
+            <div class="mt-2 flex flex-wrap gap-2 text-xs font-mono text-muted">
+                {{ with .latency_ms }}<span class="rounded border border-white/10 bg-background px-2 py-0.5">{{ . }}
+                    ms</span>{{ end }}
+                {{ with .last_checked }}<span class="rounded border border-white/10 bg-background px-2 py-0.5">{{ .
+                    }}</span>{{ end }}
+                {{ with .scope }}<span class="rounded border border-white/10 bg-background px-2 py-0.5">{{ . }}</span>{{
+                end }}
+            </div>
+
+            {{ with .detail }}<p class="mt-2 text-sm text-muted">{{ . }}</p>{{ end }}
+            {{ with .error }}<p class="mt-2 text-sm text-danger">{{ . }}</p>{{ end }}
+        </article>
+        {{ end }}
+    </div>
+    {{ else }}
+    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <article class="rounded-lg border border-white/10 bg-secondary px-4 py-3">
+            <div class="flex items-center justify-between gap-3">
+                <p class="font-medium text-text-secondary">fiber-http</p>
+                <span
+                    class="rounded border border-white/10 bg-background px-2 py-0.5 text-[11px] font-mono text-success">healthy</span>
+            </div>
+            <div class="mt-2 flex flex-wrap gap-2 text-xs font-mono text-muted">
+                <span class="rounded border border-white/10 bg-background px-2 py-0.5">3 ms</span>
+                <span class="rounded border border-white/10 bg-background px-2 py-0.5">2026-03-16 11:05:01</span>
+                <span class="rounded border border-white/10 bg-background px-2 py-0.5">core</span>
+            </div>
+            <p class="mt-2 text-sm text-muted">Primary web server process is responding normally.</p>
+        </article>
+
+        <article class="rounded-lg border border-white/10 bg-secondary px-4 py-3">
+            <div class="flex items-center justify-between gap-3">
+                <p class="font-medium text-text-secondary">local-storage</p>
+                <span
+                    class="rounded border border-white/10 bg-background px-2 py-0.5 text-[11px] font-mono text-success">healthy</span>
+            </div>
+            <div class="mt-2 flex flex-wrap gap-2 text-xs font-mono text-muted">
+                <span class="rounded border border-white/10 bg-background px-2 py-0.5">9 ms</span>
+                <span class="rounded border border-white/10 bg-background px-2 py-0.5">2026-03-16 11:05:01</span>
+                <span class="rounded border border-white/10 bg-background px-2 py-0.5">filesystem</span>
+            </div>
+            <p class="mt-2 text-sm text-muted">Storage subsystem is responding normally.</p>
+        </article>
+    </div>
+    {{ end }}
+</section>

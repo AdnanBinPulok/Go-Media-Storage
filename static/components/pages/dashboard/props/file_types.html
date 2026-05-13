@@ -1,0 +1,256 @@
+<section
+    class="flex flex-col h-full w-full overflow-hidden rounded-2xl border border-white/10 bg-background/60 shadow-sm transition-all hover:border-highlight/20">
+    <div class="flex items-center justify-between border-b border-white/5 bg-secondary/10 px-5 py-4">
+        <div class="flex items-center gap-2.5">
+            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-info/10">
+                <i class="fas fa-chart-pie text-xs text-info"></i>
+            </div>
+            <h2 class="text-base font-semibold text-text-secondary">File Types</h2>
+        </div>
+    </div>
+
+    <div
+        class="flex flex-col sm:flex-row md:flex-col xl:flex-row items-center justify-center gap-6 sm:gap-8 p-5 sm:p-6 flex-grow w-full">
+        <!-- Donut Chart Container -->
+        <div class="relative w-48 h-48 lg:w-48 lg:h-48 flex-shrink-0 flex items-center justify-center"
+            id="file-types-donut">
+
+            <!-- Inner circle text (dynamic) -->
+            <div
+                class="absolute inset-[22%] sm:inset-[20%] rounded-full bg-background flex flex-col items-center justify-center text-center px-1 z-0 pointer-events-none shadow-inner border border-white/5">
+                <span
+                    class="text-[10px] sm:text-xs text-muted truncate w-full transition-all duration-300 pointer-events-none"
+                    id="file-types-total-label">Total Files</span>
+                <span
+                    class="text-sm sm:text-base md:text-lg font-bold text-text-secondary truncate w-full transition-all duration-300 pointer-events-none"
+                    id="file-types-total-count">0</span>
+            </div>
+
+            <!-- Canvas Container -->
+            <canvas id="fileTypesChart" class="relative w-full h-full z-10 drop-shadow-md"></canvas>
+        </div>
+
+        <!-- Legend / List -->
+        <div class="flex flex-col w-full min-w-0 flex-grow gap-2" id="file-types-legend">
+            <!-- Populated dynamically via JS -->
+            <div class="animate-pulse flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-secondary"></div>
+                <div class="h-4 w-20 bg-secondary rounded"></div>
+                <div class="h-4 w-16 bg-secondary rounded ml-auto"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    const fileTypesState = {
+        cache: [],
+        totalFiles: 0,
+        chartInstance: null
+    };
+
+    const fileTypesUI = {
+        legend: document.getElementById('file-types-legend'),
+        totalLabel: document.getElementById('file-types-total-label'),
+        totalCount: document.getElementById('file-types-total-count'),
+        chartCtx: document.getElementById('fileTypesChart') ? document.getElementById('fileTypesChart').getContext('2d') : null
+    };
+
+    // Helper map to assign nice colors and icons to known types
+    const fileTypeStyles = {
+        'image': { color: '#3b82f6', hex: '#3b82f6', icon: 'fa-image', class: 'text-blue-500' },     // blue-500
+        'video': { color: '#f43f5e', hex: '#f43f5e', icon: 'fa-video', class: 'text-rose-500' },     // rose-500
+        'audio': { color: '#a855f7', hex: '#a855f7', icon: 'fa-music', class: 'text-purple-500' },   // purple-500
+        'application': { color: '#eab308', hex: '#eab308', icon: 'fa-file-lines', class: 'text-yellow-500' }, // yellow-500
+        'text': { color: '#10b981', hex: '#10b981', icon: 'fa-file-alt', class: 'text-emerald-500' },// emerald-500
+        'archive': { color: '#f97316', hex: '#f97316', icon: 'fa-file-zipper', class: 'text-orange-500' }, // orange-500
+        'data': { color: '#06b6d4', hex: '#06b6d4', icon: 'fa-database', class: 'text-cyan-500' }, // cyan-500
+        'code': { color: '#8b5cf6', hex: '#8b5cf6', icon: 'fa-code', class: 'text-violet-500' }, // violet-500
+        'executable': { color: '#ef4444', hex: '#ef4444', icon: 'fa-terminal', class: 'text-red-500' }, // red-500
+        'other': { color: '#94a3b8', hex: '#94a3b8', icon: 'fa-file', class: 'text-slate-400' }      // slate-400
+    };
+
+    function handleDonutHover(index, type, sizeStr, pct) {
+        if (!fileTypesState.chartInstance) return;
+
+        if (fileTypesUI.totalLabel) fileTypesUI.totalLabel.textContent = capitalizeFirstLetter(type) + ' (' + pct + ')';
+        if (fileTypesUI.totalCount) fileTypesUI.totalCount.textContent = sizeStr;
+
+        const activeElements = [{ datasetIndex: 0, index: index }];
+        fileTypesState.chartInstance.setActiveElements(activeElements);
+        fileTypesState.chartInstance.tooltip.setActiveElements(activeElements, { x: 0, y: 0 });
+        fileTypesState.chartInstance.update();
+    }
+
+    function handleDonutLeave() {
+        if (!fileTypesState.chartInstance) return;
+
+        if (fileTypesUI.totalLabel) fileTypesUI.totalLabel.textContent = 'Total Files';
+        if (fileTypesUI.totalCount) fileTypesUI.totalCount.textContent = fileTypesState.totalFiles.toLocaleString();
+
+        fileTypesState.chartInstance.setActiveElements([]);
+        fileTypesState.chartInstance.tooltip.setActiveElements([], { x: 0, y: 0 });
+        fileTypesState.chartInstance.update();
+    }
+
+    function renderFileTypes(data) {
+        if (!fileTypesUI.legend || !fileTypesUI.totalLabel || !fileTypesUI.totalCount) return;
+
+        if (!data || data.length === 0) {
+            fileTypesUI.legend.innerHTML = '<div class="text-sm text-center text-muted">No files found.</div>';
+            fileTypesUI.totalCount.textContent = '0';
+            fileTypesState.totalFiles = 0;
+            return;
+        }
+
+        let totalSize = 0;
+        let totalFiles = 0;
+
+        // Sum totals
+        data.forEach(item => {
+            totalSize += Number(item.total_size || 0);
+            totalFiles += Number(item.count || 0);
+        });
+
+        fileTypesState.totalFiles = totalFiles;
+        fileTypesUI.totalLabel.textContent = 'Total Files';
+        fileTypesUI.totalCount.textContent = totalFiles.toLocaleString();
+
+        let legendHTML = '';
+        const chartLabels = [];
+        const chartData = [];
+        const chartColors = [];
+
+        data.forEach((item, index) => {
+            const size = Number(item.total_size || 0);
+            const count = Number(item.count || 0);
+            const type = item.type || 'other';
+
+            // fallback to 'other' if unknown
+            const style = fileTypeStyles[type] || fileTypeStyles['other'];
+
+            const percentage = totalSize > 0 ? (size / totalSize) * 100 : 0;
+            const formattedSize = formatBytes(size);
+
+            if (percentage > 0) {
+                chartLabels.push(capitalizeFirstLetter(type));
+                chartData.push(size);
+                chartColors.push(style.hex);
+            }
+
+            legendHTML += `
+                <div class="flex items-center justify-between group rounded-lg p-2 hover:bg-white/5 transition-colors gap-2 min-w-0 cursor-pointer"
+                    onmouseenter="handleDonutHover(${index}, '${type}', '${formattedSize}', '${percentage.toFixed(1)}%')" 
+                    onmouseleave="handleDonutLeave()">
+                    <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div class="w-3 h-3 rounded-full flex-shrink-0 shadow-sm" style="background-color: ${style.hex}"></div>
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <i class="fas ${style.icon} text-[10px] ${style.class} flex-shrink-0"></i>
+                            <span class="text-xs sm:text-sm font-medium text-text-secondary capitalize truncate block">${type}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                        <span class="text-[10px] sm:text-xs font-semibold text-text-secondary whitespace-nowrap">${formattedSize}</span>
+                        <span class="text-[10px] sm:text-xs text-muted w-8 sm:w-10 text-right whitespace-nowrap">${percentage.toFixed(1)}%</span>
+                    </div>
+                </div>
+            `;
+        });
+
+        fileTypesUI.legend.innerHTML = legendHTML;
+
+        // Initialize Chart.js
+        if (!fileTypesUI.chartCtx) return;
+
+        if (fileTypesState.chartInstance) {
+            fileTypesState.chartInstance.destroy();
+        }
+
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = '"Inter", sans-serif';
+
+        fileTypesState.chartInstance = new Chart(fileTypesUI.chartCtx, {
+            type: 'doughnut',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    data: chartData,
+                    backgroundColor: chartColors,
+                    borderWidth: 2,
+                    borderColor: '#0f172a', // Background color match for spacing
+                    hoverBorderColor: '#1e293b',
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%', // Donut hole size
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                },
+                plugins: {
+                    legend: {
+                        display: false // Using custom HTML legend
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#f8fafc',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function (context) {
+                                const val = context.raw;
+                                const sizeStr = formatBytes(val);
+                                const pct = ((val / totalSize) * 100).toFixed(1) + '%';
+                                return ` ${sizeStr} (${pct})`;
+                            }
+                        }
+                    }
+                },
+                onHover: (event, elements) => {
+                    const canvas = event.native.target;
+                    canvas.style.cursor = elements && elements.length ? 'pointer' : 'default';
+
+                    if (elements && elements.length > 0) {
+                        const index = elements[0].index;
+                        const label = chartLabels[index];
+                        const val = chartData[index];
+                        const p = ((val / totalSize) * 100).toFixed(1) + '%';
+
+                        if (fileTypesUI.totalLabel) fileTypesUI.totalLabel.textContent = label + ' (' + p + ')';
+                        if (fileTypesUI.totalCount) fileTypesUI.totalCount.textContent = formatBytes(val);
+                    } else {
+                        if (fileTypesUI.totalLabel) fileTypesUI.totalLabel.textContent = 'Total Files';
+                        if (fileTypesUI.totalCount) fileTypesUI.totalCount.textContent = fileTypesState.totalFiles.toLocaleString();
+                    }
+                }
+            }
+        });
+    }
+
+    async function fetchFileTypes() {
+        try {
+            const response = await fetch('/api/dashboard/file_types');
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || result.message || 'Failed to load file types');
+            }
+            fileTypesState.cache = result.data || [];
+            renderFileTypes(fileTypesState.cache);
+        } catch (error) {
+            console.error('Error fetching file types:', error);
+            if (fileTypesUI.legend) {
+                fileTypesUI.legend.innerHTML = '<div class="text-sm text-danger">Failed to load data</div>';
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchFileTypes();
+    });
+</script>

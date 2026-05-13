@@ -1,0 +1,76 @@
+<nav class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-secondary/85 backdrop-blur-md" id="navbar">
+    <div class="mx-auto w-full max-w-[90%] md:max-w-[80%] lg:max-w-[80%]">
+        <div class="flex items-center justify-between gap-3 py-3 md:py-4">
+            <a href="/" class="flex min-w-0 items-center gap-2 group">
+                {{ if .site.favicon }}
+                <img src="{{.site.favicon }}" class="h-8 w-auto transition-transform group-hover:scale-105"
+                    alt="Media Storage Logo">
+                {{ end }}
+                <span
+                    class="truncate text-lg sm:text-xl md:text-2xl font-[Roboto] font-semibold text-text-secondary tracking-tight leading-none">
+                    {{.site.title }}
+                </span>
+            </a>
+
+            <div class="hidden md:flex md:items-center">
+                {{ template "components/common/header_props/nav_links" . }}
+            </div>
+
+            <div class="flex items-center gap-2">
+                {{ template "components/common/header_props/actions" . }}
+
+                <button type="button"
+                    class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 text-muted transition-colors hover:bg-add-to-cart-hover hover:text-text-secondary focus:outline-none focus:ring-2 focus:ring-highlight/60 md:hidden"
+                    id="mobile-menu-btn" aria-expanded="false" aria-controls="mobile-nav-panel">
+                    <span class="sr-only">Toggle menu</span>
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobile-nav-panel" class="hidden pb-3 md:hidden">
+            <div class="rounded-2xl border border-white/10 bg-add-to-cart/90 p-3">
+                {{ template "components/common/header_props/nav_links" . }}
+                {{ if .user }}
+                <div class="mt-3 border-t border-white/10 pt-3">
+                    <a href="/dashboard"
+                        class="block rounded-lg px-3 py-2 text-sm font-medium text-text-secondary hover:bg-add-to-cart-hover">
+                        Dashboard
+                    </a>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+</nav>
+
+<script>
+    function initMobileMenu() {
+        const btn = document.getElementById('mobile-menu-btn');
+        const menu = document.getElementById('mobile-nav-panel');
+        if (!btn || !menu) {
+            return;
+        }
+
+        btn.addEventListener('click', function () {
+            menu.classList.toggle('hidden');
+            const expanded = !menu.classList.contains('hidden');
+            btn.setAttribute('aria-expanded', String(expanded));
+
+            const icon = btn.querySelector('i');
+            if (!icon) {
+                return;
+            }
+
+            if (!expanded) {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+                return;
+            }
+
+            icon.classList.remove('fa-bars');
+            icon.classList.add('fa-times');
+        });
+    }
+
+    initMobileMenu();
+</script>

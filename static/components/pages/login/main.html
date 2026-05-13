@@ -1,0 +1,11 @@
+<div class="w-full flex items-center justify-center py-10 px-4">
+    <div class="w-full max-w-4xl grid md:grid-cols-[1.2fr,1fr] gap-6 lg:gap-10 items-start">
+        <div class="flex flex-col gap-6 order-1">
+            {{ template "components/pages/login/props/form" . }}
+        </div>
+        <div class="flex flex-col gap-6 order-2">
+            {{ template "components/pages/login/props/help" . }}
+            {{ template "components/pages/login/props/security" . }}
+        </div>
+    </div>
+</div>

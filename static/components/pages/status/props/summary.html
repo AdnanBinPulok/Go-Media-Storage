@@ -1,0 +1,24 @@
+<section class="rounded-xl border border-white/10 bg-secondary/70 p-4 md:p-5">
+    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div>
+            <h1 class="text-xl md:text-2xl font-heading font-semibold text-text-secondary">Project Status</h1>
+            <p class="text-sm md:text-base text-muted">Live operational and storage signals for this media service.</p>
+        </div>
+
+        {{ with .status }}
+        <div class="grid grid-cols-1 gap-1 text-xs font-mono text-muted md:text-right">
+            {{ with .generated_at }}<p>Generated: <span class="text-text-secondary">{{ . }}</span></p>{{ end }}
+            {{ with .project_name }}<p>Project: <span class="text-text-secondary">{{ . }}</span></p>{{ end }}
+            {{ with .mode }}<p>Mode: <span class="text-text-secondary">{{ . }}</span></p>{{ end }}
+            {{ with .version }}<p>Version: <span class="text-text-secondary">{{ . }}</span></p>{{ end }}
+        </div>
+        {{ else }}
+        <div class="grid grid-cols-1 gap-1 text-xs font-mono text-muted md:text-right">
+            <p>Generated: <span class="text-text-secondary">2026-03-16T11:05:00Z</span></p>
+            <p>Project: <span class="text-text-secondary">go-media-storage</span></p>
+            <p>Mode: <span class="text-text-secondary">development</span></p>
+            <p>Version: <span class="text-text-secondary">v0.1.0-dummy</span></p>
+        </div>
+        {{ end }}
+    </div>
+</section>

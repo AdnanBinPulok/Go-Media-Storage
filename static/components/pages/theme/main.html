@@ -1,0 +1,105 @@
+<section class="rounded-xl border border-text-primary/10 bg-secondary/70 p-6">
+    <h1 class="text-2xl md:text-3xl font-heading font-bold text-text-secondary">Tailwind Theme Preview</h1>
+    <p class="mt-2 text-muted">
+        This page shows your current <span class="text-highlight font-semibold">tailwind.config</span> values
+        from <span class="text-link">components/utils/tailwind.html</span>.
+    </p>
+</section>
+
+<section class="rounded-xl border border-text-primary/10 bg-success/10 p-6">
+    <h2 class="text-xl font-heading font-semibold">Color Tokens</h2>
+    <div id="theme-colors" class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+</section>
+
+<section class="rounded-xl border border-text-primary/10 bg-success/10 p-6">
+    <h2 class="text-xl font-heading font-semibold">Typography Tokens</h2>
+    <div id="theme-fonts" class="mt-4 grid gap-3 text-sm"></div>
+</section>
+
+<section class="rounded-xl border border-text-primary/10 bg-success/10 p-6">
+    <h2 class="text-xl font-heading font-semibold">Shape and Shadow Tokens</h2>
+    <div id="theme-shapes" class="mt-4 grid gap-4 text-sm"></div>
+</section>
+
+<section class="rounded-xl border border-text-primary/10 bg-secondary p-6">
+    <h2 class="text-xl font-heading font-semibold">Raw tailwind.config</h2>
+    <pre id="theme-config"
+        class="mt-4 p-4 rounded-xl overflow-auto max-h-[28rem] text-xs md:text-sm bg-background text-muted border border-text-primary/10"></pre>
+</section>
+
+<script>
+    function renderThemePreview() {
+        const cfg = (window.tailwind && window.tailwind.config) || {};
+        const extend = (cfg.theme && cfg.theme.extend) || {};
+        const colors = extend.colors || {};
+        const fonts = extend.fontFamily || {};
+        const radius = extend.borderRadius || {};
+        const shadows = extend.boxShadow || {};
+
+        const configNode = document.getElementById('theme-config');
+        if (configNode) {
+            configNode.textContent = JSON.stringify(cfg, null, 2);
+        }
+
+        const colorsNode = document.getElementById('theme-colors');
+        if (colorsNode) {
+            Object.entries(colors).forEach(([name, value]) => {
+                const card = document.createElement('div');
+                card.className = 'rounded-xl border border-text-primary/10 bg-secondary p-3';
+
+                const swatch = document.createElement('div');
+                swatch.className = 'h-12 w-full rounded-lg border border-text-primary/10';
+                swatch.style.background = String(value);
+
+                const label = document.createElement('p');
+                label.className = 'mt-2 text-sm font-semibold text-text-secondary';
+                label.textContent = name;
+
+                const hex = document.createElement('p');
+                hex.className = 'text-xs text-muted';
+                hex.textContent = String(value);
+
+                card.appendChild(swatch);
+                card.appendChild(label);
+                card.appendChild(hex);
+                colorsNode.appendChild(card);
+            });
+        }
+
+        const fontsNode = document.getElementById('theme-fonts');
+        if (fontsNode) {
+            Object.entries(fonts).forEach(([name, stack]) => {
+                const row = document.createElement('div');
+                row.className = 'rounded-lg border border-text-primary/10 p-3 bg-secondary';
+
+                const title = document.createElement('p');
+                title.className = 'font-semibold text-text-secondary';
+                title.textContent = name;
+
+                const value = document.createElement('p');
+                value.className = 'text-muted';
+                value.textContent = Array.isArray(stack) ? stack.join(', ') : String(stack);
+
+                row.appendChild(title);
+                row.appendChild(value);
+                fontsNode.appendChild(row);
+            });
+        }
+
+        const shapesNode = document.getElementById('theme-shapes');
+        if (shapesNode) {
+            const radiusCard = document.createElement('div');
+            radiusCard.className = 'rounded-lg border border-text-primary/10 p-3 bg-secondary';
+            radiusCard.innerHTML = '<p class="font-semibold text-text-secondary">borderRadius</p><p class="text-muted mt-1">' + JSON.stringify(radius) + '</p>';
+
+            const shadowCard = document.createElement('div');
+            shadowCard.className = 'rounded-lg border border-text-primary/10 p-3 bg-secondary';
+            shadowCard.innerHTML = '<p class="font-semibold text-text-secondary">boxShadow</p><p class="text-muted mt-1">' + JSON.stringify(shadows) + '</p>';
+
+            shapesNode.appendChild(radiusCard);
+            shapesNode.appendChild(shadowCard);
+        }
+    }
+
+    renderThemePreview();
+</script>

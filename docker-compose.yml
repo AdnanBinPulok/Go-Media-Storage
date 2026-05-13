@@ -1,0 +1,67 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: go-media-storage
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8432}:8432"
+    environment:
+      APP_HOST: "0.0.0.0"
+      APP_PORT: "8432"
+      BASE_URL: "${BASE_URL:-http://localhost:8432}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      POSTGRES_DB: "${POSTGRES_DB:-go_media_storage}"
+      POSTGRES_SSL_MODE: "disable"
+      DATABASE_MAX_OPEN_CONNS: "${DATABASE_MAX_OPEN_CONNS:-25}"
+      DATABASE_MAX_IDLE_CONNS: "${DATABASE_MAX_IDLE_CONNS:-10}"
+
+      FILE_STORAGE_LOCAL_BASE_PATH: "/app/storage"
+      FILE_STORAGE_LIMIT: "${FILE_STORAGE_LIMIT:-0}"
+
+      BROWSER_CACHE_TIME_SECONDS: "${BROWSER_CACHE_TIME_SECONDS:-30}"
+      PROXY_CACHE_TIME_SECONDS: "${PROXY_CACHE_TIME_SECONDS:-60}"
+    volumes:
+      # Persistent uploaded files
+      - storage_data:/app/storage
+      # site.json and whitelist.json (copy from *_example.json on first run)
+      - ./data:/app/data
+      # Optional: mount your secrets/.env for local overrides
+      # - ./secrets:/app/secrets
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: go-media-storage-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}"
+      POSTGRES_DB: "${POSTGRES_DB:-go_media_storage}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-go_media_storage}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+volumes:
+  postgres_data:
+  storage_data:
+
+networks:
+  backend:
+    driver: bridge

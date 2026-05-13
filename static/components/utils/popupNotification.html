@@ -1,0 +1,114 @@
+<script>
+  const POPUP_STYLES = {
+    info: {
+      icon: "fas fa-info-circle",
+      badge: "bg-highlight/15 text-highlight ring-1 ring-highlight/25",
+      button: "bg-highlight hover:bg-primary focus-visible:ring-highlight/40 text-white"
+    },
+    success: {
+      icon: "fas fa-check-circle",
+      badge: "bg-success/15 text-success ring-1 ring-success/25",
+      button: "bg-success hover:bg-success/90 focus-visible:ring-success/40 text-white"
+    },
+    warning: {
+      icon: "fas fa-exclamation-triangle",
+      badge: "bg-warning/15 text-warning ring-1 ring-warning/25",
+      button: "bg-warning hover:bg-warning/90 focus-visible:ring-warning/40 text-white"
+    },
+    error: {
+      icon: "fas fa-times-circle",
+      badge: "bg-danger/15 text-danger ring-1 ring-danger/25",
+      button: "bg-danger hover:bg-danger/90 focus-visible:ring-danger/40 text-white"
+    }
+  };
+
+  function showPopupNotification(message, type = "info", duration = 3500) {
+    console.log("Showing popup:", message, type, duration);
+
+    const style = POPUP_STYLES[type] || POPUP_STYLES.info;
+
+    const overlay = document.createElement("div");
+    overlay.className = `
+      fixed inset-0 z-[9999]
+      bg-background/75 backdrop-blur-[2px]
+      flex items-center justify-center
+      p-4
+      opacity-0 transition-opacity duration-200
+    `;
+
+    const popup = document.createElement("div");
+    popup.className = `
+      w-full max-w-md
+      rounded-2xl border border-white/10 bg-secondary/95 text-text-secondary shadow-2xl shadow-black/40
+      px-5 py-4 sm:px-6 sm:py-5
+      transform scale-95 translate-y-2
+      transition-all duration-200
+    `;
+
+    popup.innerHTML = `
+      <div class="flex items-start gap-3.5">
+        <div class="shrink-0 rounded-full px-2.5 py-1.5 ${style.badge}">
+          <i class="${style.icon} text-base"></i>
+        </div>
+        <div class="flex-1 pt-0.5">
+          <p class="text-[15px] sm:text-base leading-6 font-medium text-text-secondary">${message}</p>
+        </div>
+      </div>
+      <div class="mt-5 flex justify-end">
+        <button class="relative overflow-hidden isolate min-w-24 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-secondary ${style.button}">
+          <span data-close-progress class="absolute inset-y-0 left-0 w-full bg-white/25"></span>
+          <span class="relative z-10">OK</span>
+        </button>
+      </div>
+    `;
+
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    requestAnimationFrame(() => {
+      overlay.classList.remove("opacity-0");
+      popup.classList.remove("scale-95", "translate-y-2");
+    });
+
+    const closeButton = popup.querySelector("button");
+    const closeProgress = popup.querySelector("[data-close-progress]");
+
+    if (duration > 0 && closeProgress) {
+      closeProgress.style.width = "100%";
+      closeProgress.style.transition = "none";
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          closeProgress.style.transition = `width ${duration}ms linear`;
+          closeProgress.style.width = "0%";
+        });
+      });
+    } else if (closeProgress) {
+      closeProgress.style.display = "none";
+    }
+
+    const closeTimeout = duration > 0 ? setTimeout(close, duration) : null;
+    let isClosed = false;
+
+    function close() {
+      if (isClosed) return;
+      isClosed = true;
+
+      if (closeTimeout) {
+        clearTimeout(closeTimeout);
+      }
+
+      overlay.classList.add("opacity-0");
+      popup.classList.add("scale-95", "translate-y-2");
+      setTimeout(() => overlay.remove(), 300);
+    }
+
+    closeButton.onclick = close;
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) {
+        close();
+      }
+    });
+  }
+
+</script>

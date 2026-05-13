@@ -1,0 +1,154 @@
+<div id="dashboard-sidebar-backdrop" class="fixed inset-0 z-30 hidden bg-black/50 backdrop-blur-sm lg:hidden"
+    onclick="toggleSidebar()"></div>
+<nav class="h-screen w-64 border-r border-white/10 bg-secondary/70 backdrop-blur-sm fixed left-0 z-40 transition-transform -translate-x-full lg:translate-x-0"
+    id="dashboard-sidebar">
+    <div class="flex h-full flex-col w-full">
+        <div class="p-3 md:p-4 flex flex-row items-center justify-between border-b border-white/10 h-16">
+            <a href="/dashboard" class="flex items-center gap-2 group">
+                {{ if .site.favicon }}
+                <img src="{{.site.favicon }}" alt="{{.site.title }}"
+                    class="h-7 w-auto transition-transform group-hover:scale-105">
+                {{ end }}
+                <span class="text-lg font-heading font-semibold text-text-secondary">
+                    Dashboard
+                </span>
+            </a>
+        </div>
+        <ul class="flex-1 space-y-1 p-3 md:p-4 overflow-y-auto custom-scrollbar">
+            <li>
+                <a href="/dashboard" data-target="dashboard"
+                    class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-add-to-cart-hover hover:text-text-secondary">
+                    <i class="fas fa-chart-pie w-4 text-accent"></i>
+                    Overview
+                </a>
+            </li>
+            <li>
+                <a href="/dashboard/vaults" data-target="dashboard_vaults"
+                    class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-add-to-cart-hover hover:text-text-secondary">
+                    <i class="fas fa-box-open w-4 text-muted"></i>
+                    Vaults
+                </a>
+            </li>
+            <li>
+                <a href="/dashboard/upload" data-target="dashboard_uploads"
+                    class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-add-to-cart-hover hover:text-text-secondary">
+                    <i class="fas fa-cloud-upload-alt w-4 text-muted"></i>
+                    Uploads
+                </a>
+            </li>
+            <li>
+                <a href="/dashboard/compress" data-target="dashboard_compress"
+                    class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-add-to-cart-hover hover:text-text-secondary">
+                    <i class="fas fa-compress-arrows-alt w-4 text-muted"></i>
+                    Compress
+                </a>
+            </li>
+            <li>
+                <a href="/status"
+                    class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-add-to-cart-hover hover:text-text-secondary">
+                    <i class="fas fa-server w-4 text-muted"></i>
+                    System Status
+                </a>
+            </li>
+            <li>
+                <a href="/theme"
+                    class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-add-to-cart-hover hover:text-text-secondary">
+                    <i class="fas fa-palette w-4 text-muted"></i>
+                    Theme
+                </a>
+            </li>
+        </ul>
+
+        <div class="mt-5 border-t border-white/10 py-5 px-3 md:px-4 flex flex-row items-center gap-x-1">
+            <a href="/" class="flex items-center px-1 py-0.5 text-sm font-medium text-muted rounded h-full">
+                <i class="fas fa-home w-5 text-center hover:text-text-secondary"></i>
+            </a>
+            <div class="flex-1 rounded-lg transition-colors cursor-pointer truncate"
+                title="{{.user.full_name}} - {{.user.email}}">
+                <p class="text-sm font-medium text-text-secondary">{{.user.full_name}}</p>
+                <div class="text-xs text-muted truncate">{{.user.email}}</div>
+            </div>
+            <a href="/logout"
+                class="flex items-center px-4 py-3 text-sm font-medium text-danger/70 rounded hover:bg-danger/10 transition-colors duration-200 h-full">
+                <i class="fas fa-sign-out-alt w-5 text-center"></i>
+            </a>
+        </div>
+    </div>
+</nav>
+<script>
+    const sidebarUI = {
+        sidebar: document.getElementById('dashboard-sidebar'),
+        backdrop: document.getElementById('dashboard-sidebar-backdrop'),
+        links: document.querySelectorAll('#dashboard-sidebar ul.flex-1 a'),
+        rootLink: document.querySelector('#dashboard-sidebar a[href="/dashboard"]')
+    };
+
+    function renderActiveSidebarLink() {
+        if (!sidebarUI.links) return;
+
+        const path = window.location.pathname;
+        let activeLink = null;
+
+        sidebarUI.links.forEach(link => {
+            const href = link.getAttribute('href');
+            if (path === href) {
+                activeLink = link;
+            } else if (path.startsWith(href) && href !== '/dashboard' && href !== '/') {
+                if (!activeLink || href.length > activeLink.getAttribute('href').length) {
+                    activeLink = link;
+                }
+            }
+        });
+
+        if (!activeLink && path.startsWith('/dashboard')) {
+            activeLink = sidebarUI.rootLink;
+        }
+
+        if (!activeLink) return;
+
+        activeLink.classList.remove('text-muted');
+        activeLink.classList.add('bg-add-to-cart-hover', 'text-text-secondary');
+
+        const icon = activeLink.querySelector('i');
+        if (icon) {
+            icon.classList.remove('text-muted');
+            icon.classList.add('text-accent');
+        }
+    }
+
+    function toggleSidebar() {
+        if (!sidebarUI.sidebar || !sidebarUI.backdrop) return;
+
+        const isOpen = !sidebarUI.sidebar.classList.contains('-translate-x-full');
+
+        if (isOpen) {
+            sidebarUI.sidebar.classList.add('-translate-x-full');
+            sidebarUI.backdrop.classList.add('hidden');
+            return;
+        }
+
+        sidebarUI.sidebar.classList.remove('-translate-x-full');
+        sidebarUI.backdrop.classList.remove('hidden');
+    }
+
+    function syncSidebarByViewport() {
+        if (!sidebarUI.sidebar || !sidebarUI.backdrop) return;
+
+        if (window.innerWidth >= 1024) {
+            sidebarUI.sidebar.classList.remove('-translate-x-full');
+            sidebarUI.backdrop.classList.add('hidden');
+            return;
+        }
+
+        sidebarUI.sidebar.classList.add('-translate-x-full');
+        sidebarUI.backdrop.classList.add('hidden');
+    }
+
+    function initSidebarState() {
+        renderActiveSidebarLink();
+        syncSidebarByViewport();
+        window.addEventListener('resize', syncSidebarByViewport);
+    }
+
+    initSidebarState();
+</script>

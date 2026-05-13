@@ -1,0 +1,69 @@
+﻿<section class="max-w-full bg-background px-6 py-20 border-b border-white/5">
+    <div class="w-full mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-heading font-semibold text-text-secondary mb-2">System Architecture</h2>
+            <p class="text-muted">Data and request paths through the application.</p>
+        </div>
+        <span class="text-xs font-mono text-muted bg-secondary px-3 py-1 border border-white/10 rounded">Source: App Routes</span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
+        <!-- Upload Pipeline -->
+        <div class="bg-secondary p-6 md:p-8 border border-white/10 rounded overflow-hidden">
+            <h3 class="text-lg font-semibold text-text-secondary mb-6 border-b border-white/10 pb-4">
+                Upload Request Lifecycle
+            </h3>
+            <div class="flex flex-col">
+                <div class="flex items-center gap-4 py-3 border-b border-dashed border-white/5">
+                    <span class="text-muted font-mono w-6 text-right">01</span>
+                    <i class="fas fa-user w-6 text-center text-muted"></i>
+                    <span class="text-text-secondary font-medium">Client Payload Submission</span>
+                </div>
+                <div class="flex items-center gap-4 py-3 border-b border-dashed border-white/5">
+                    <span class="text-muted font-mono w-6 text-right">02</span>
+                    <i class="fas fa-shield-alt w-6 text-center text-muted"></i>
+                    <span class="text-text-secondary font-medium">API Route & Validation</span>
+                </div>
+                <div class="flex items-center gap-4 py-3 border-b border-dashed border-white/5">
+                    <span class="text-muted font-mono w-6 text-right">03</span>
+                    <i class="fas fa-database w-6 text-center text-muted"></i>
+                    <span class="text-text-secondary font-medium">JSON Metadata Update</span>
+                </div>
+                <div class="flex items-center gap-4 py-3 border-b border-dashed border-white/5">
+                    <span class="text-success font-mono w-6 text-right">04</span>
+                    <i class="fas fa-hdd w-6 text-center text-success"></i>
+                    <span class="text-success font-medium">Filesystem Storage Write</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Get Content Pipeline -->
+        <div class="bg-secondary p-6 md:p-8 border border-white/10 rounded overflow-hidden">
+            <h3 class="text-lg font-semibold text-text-secondary mb-6 border-b border-white/10 pb-4">
+                Asset Delivery Pipeline
+            </h3>
+            <div class="flex flex-col">
+                <div class="flex items-center gap-4 py-3 border-b border-dashed border-white/5">
+                    <span class="text-muted font-mono w-6 text-right">01</span>
+                    <i class="fas fa-globe w-6 text-center text-muted"></i>
+                    <span class="text-text-secondary font-medium">Client Media Request</span>
+                </div>
+                <div class="flex items-center gap-4 py-3 border-b border-dashed border-white/5">
+                    <span class="text-accent font-mono w-6 text-right">02</span>
+                    <i class="fas fa-bolt w-6 text-center text-accent"></i>
+                    <span class="text-accent font-medium">Edge Proxy Override (e.g. Cloudflare)</span>
+                </div>
+                <div class="flex items-center gap-4 py-3 border-b border-dashed border-white/5">
+                    <span class="text-muted font-mono w-6 text-right">03</span>
+                    <i class="fas fa-server w-6 text-center text-muted"></i>
+                    <span class="text-text-secondary font-medium">API Native Fallback (Cache Miss)</span>
+                </div>
+                <div class="flex items-center gap-4 py-3 border-b border-dashed border-white/5">
+                    <span class="text-highlight font-mono w-6 text-right">04</span>
+                    <i class="fas fa-file-export w-6 text-center text-highlight"></i>
+                    <span class="text-highlight font-medium">Direct Disk Stream Delivery</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

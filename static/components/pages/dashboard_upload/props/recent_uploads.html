@@ -1,0 +1,164 @@
+<section class="flex flex-col overflow-hidden rounded-lg border border-white/10 bg-secondary/10">
+    <!-- Header -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-secondary/30 px-4 py-3">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-clock text-sm font-semibold text-primary/80"></i>
+            <h3 class="text-sm font-semibold text-text-secondary md:text-base">Recent Uploads</h3>
+        </div>
+        <div class="flex items-center gap-1.5 text-xs font-medium">
+            <span id="recent-uploads-count-badge" class="rounded-md bg-secondary/50 px-2 py-0.5 text-muted">Last 3
+                items</span>
+        </div>
+    </div>
+
+    <!-- Grid List -->
+    <div id="dashboard-recent-rows" class="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+    </div>
+</section>
+<script>
+    const recentUploadsContainer = document.getElementById('dashboard-recent-rows');
+
+    function showRecentUploadsLoading() {
+        recentUploadsContainer.innerHTML = `
+            <div class="col-span-full flex items-center justify-center py-10">
+                <i class="fas fa-spinner fa-spin text-2xl text-primary/80"></i>
+            </div>
+        `;
+    }
+
+    function showRecentUploadsEmpty() {
+        recentUploadsContainer.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center gap-3 py-10">
+                <i class="fas fa-inbox text-3xl text-muted"></i>
+                <p class="text-sm text-muted">No recent uploads found.</p>
+            </div>
+        `;
+    }
+
+    function escapeHtml(text) {
+        return String(text || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function renderRecentUploads(data) {
+        if (!data || data.length === 0) {
+            showRecentUploadsEmpty();
+            return;
+        }
+
+        const countBadge = document.querySelector('#recent-uploads-count-badge');
+        if (countBadge) countBadge.textContent = `Last ${data.length} items`;
+
+        recentUploadsContainer.innerHTML = '';
+
+        data.map(function (item) {
+            let iconClass = 'fa-file';
+            let iconColor = 'text-primary/70';
+
+            if (item.mime_type.startsWith('image/')) {
+                iconClass = 'fa-image';
+                iconColor = 'text-blue-400';
+            } else if (item.mime_type.startsWith('video/')) {
+                iconClass = 'fa-video';
+                iconColor = 'text-purple-400';
+            } else if (item.mime_type === 'application/pdf') {
+                iconClass = 'fa-file-pdf';
+                iconColor = 'text-red-400';
+            } else if (item.file_ext === '.torrent') {
+                iconClass = 'fa-file-download';
+                iconColor = 'text-green-400';
+            }
+
+            const size = formatBytes(item.file_size_bytes);
+            const date = formatDateTime(item.created_at, true, false, true);
+
+            const uploadItem = document.createElement('div');
+            uploadItem.className = 'group relative flex flex-col gap-4 rounded-lg border border-white/5 bg-secondary/20 p-4 transition-colors hover:border-highlight/20 hover:bg-secondary/40';
+
+            // Prepare URLs securely
+            const viewUrl = item.url ? escapeHtml(item.url.view) : '#';
+            const downloadUrl = item.url ? escapeHtml(item.url.download) : '#';
+
+            const isImage = item.file_type === 'image';
+            const isCompressed = isImage && item.compressed === true;
+
+            const compressBadge = isCompressed
+                ? `<span class="inline-flex items-center gap-1 rounded-md border border-green-500/30 bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-400">
+                       <i class="fas fa-check-circle text-[10px]"></i> Compressed
+                   </span>`
+                : '';
+
+            const compressBtn = (isImage && !isCompressed)
+                ? `<a href="/dashboard/compress?file_url=${encodeURIComponent(item.url ? item.url.view : '')}"
+                        class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:bg-secondary hover:text-text-secondary"
+                        title="Compress image">
+                        <i class="fas fa-compress-arrows-alt"></i> Compress
+                   </a>`
+                : '';
+
+            uploadItem.innerHTML = `
+                <div class="flex items-start gap-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background/50">
+                        <i class="fas ${escapeHtml(iconClass)} ${escapeHtml(iconColor)} text-lg"></i>
+                    </div>
+                    <div class="flex min-w-0 flex-1 flex-col justify-center">
+                        <p class="truncate text-sm font-medium text-text-secondary" title="${escapeHtml(item.original_name)}">${escapeHtml(item.original_name)}</p>
+                        <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
+                            <span>${escapeHtml(size)}</span>
+                            <span>&bull;</span>
+                            <span class="truncate">${escapeHtml(date)}</span>
+                            ${compressBadge}
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-1 flex flex-wrap items-center justify-end gap-2 border-t border-white/5 pt-3">
+                    ${compressBtn}
+                    <button type="button" onclick="copyToClipboard(this, '${downloadUrl}')" class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:bg-secondary hover:text-text-secondary" title="Copy Link">
+                        <i class="fas fa-link"></i> Copy
+                    </button>
+                    ${viewUrl !== '#' ? `
+                    <a href="${viewUrl}" target="_blank" rel="noopener" class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:bg-secondary hover:text-text-secondary">
+                        <i class="fas fa-external-link-alt"></i> View
+                    </a>` : ''}
+                    ${downloadUrl !== '#' ? `
+                    <a href="${downloadUrl}" download class="flex items-center gap-1.5 rounded-lg bg-highlight/10 px-3 py-1.5 text-xs font-medium text-highlight transition-colors hover:bg-highlight/20">
+                        <i class="fas fa-download"></i> Download
+                    </a>` : ''}
+                </div>
+            `;
+            recentUploadsContainer.appendChild(uploadItem);
+        });
+    }
+
+
+    async function fetchRecentUploads() {
+        console.log('Fetching recent uploads...');
+        try {
+            const response = await fetch('/api/uploads/recent');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch recent uploads: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || result.message || 'Failed to load recent uploads');
+            }
+
+            renderRecentUploads(result.data);
+        } catch (error) {
+            console.error('Error fetching recent uploads:', error);
+            showNotification(error.message, 'error');
+            showRecentUploadsEmpty();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        showRecentUploadsLoading();
+        fetchRecentUploads();
+    });
+
+</script>

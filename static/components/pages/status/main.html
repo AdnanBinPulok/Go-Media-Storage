@@ -1,0 +1,198 @@
+﻿<!-- Status Page — CSR: data fetched from GET /api/status -->
+<div class="w-full flex flex-col gap-6" id="status-root">
+
+    <!-- Loading skeleton -->
+    <div id="status-loading" class="flex flex-col gap-6 animate-pulse">
+        <div class="h-24 rounded-xl bg-secondary/60 border border-white/10"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="h-28 rounded-xl bg-secondary/60 border border-white/10"></div>
+            <div class="h-28 rounded-xl bg-secondary/60 border border-white/10"></div>
+        </div>
+        <div class="h-48 rounded-xl bg-secondary/60 border border-white/10"></div>
+        <div class="h-48 rounded-xl bg-secondary/60 border border-white/10"></div>
+    </div>
+
+    <!-- Error state -->
+    <div id="status-error" class="hidden rounded-xl border border-danger/40 bg-danger/10 px-5 py-6 text-center">
+        <p class="text-danger font-semibold text-base">Failed to load status</p>
+        <p id="status-error-msg" class="mt-1 text-sm text-muted"></p>
+        <button onclick="loadStatus()"
+            class="mt-4 rounded-lg border border-white/10 bg-secondary px-4 py-2 text-sm text-text-secondary hover:bg-add-to-cart-hover transition-colors">
+            Retry
+        </button>
+    </div>
+
+    <!-- Content (hidden until loaded) -->
+    <div id="status-content" class="hidden flex flex-col gap-6"></div>
+</div>
+
+<script>
+    (function () {
+        /* ── helpers ──────────────────────────────────────────────── */
+        function el(tag, cls, html) {
+            const e = document.createElement(tag);
+            if (cls) e.className = cls;
+            if (html !== undefined) e.innerHTML = html;
+            return e;
+        }
+
+        function badge(text, color) {
+            // color: 'success' | 'danger' | 'warning' | 'muted' | 'highlight'
+            const map = {
+                success: 'text-success border-success/30',
+                danger: 'text-danger  border-danger/30',
+                warning: 'text-warning border-warning/30',
+                highlight: 'text-highlight border-highlight/30',
+                muted: 'text-muted   border-white/10',
+            };
+            return `<span class="rounded border ${map[color] ?? map.muted} bg-background px-2 py-0.5 text-[11px] font-mono">${text}</span>`;
+        }
+
+        function pill(text) {
+            return `<span class="rounded border border-white/10 bg-secondary px-2 py-0.5 text-xs font-mono text-muted">${text}</span>`;
+        }
+
+        function card(inner, extraCls) {
+            return `<article class="rounded-xl border border-white/10 bg-secondary/70 p-4 ${extraCls ?? ''}">${inner}</article>`;
+        }
+
+        function section(title, bodyHtml) {
+            return `
+        <section class="rounded-xl border border-white/10 bg-background p-4 md:p-5">
+            <h2 class="text-base md:text-lg font-semibold text-text-secondary font-[Roboto]">${title}</h2>
+            <div class="mt-3">${bodyHtml}</div>
+        </section>`;
+        }
+
+        /* ── renderers ────────────────────────────────────────────── */
+        function renderSummary(d) {
+            const overallState = (d.services ?? []).every(s => s.state === 'healthy') ? 'healthy' : 'degraded';
+            const stateColor = overallState === 'healthy' ? 'success' : 'warning';
+            return `
+        <section class="rounded-xl border border-white/10 bg-secondary/70 p-4 md:p-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-background">
+                        <i class="fas fa-server text-highlight text-sm"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-semibold text-text-secondary font-[Roboto]">${d.project_name ?? 'System Status'}</h1>
+                        <p class="text-sm text-muted">Live operational signals</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs font-mono text-muted">
+                    ${badge(overallState, stateColor)}
+                    ${d.version ? pill('v' + d.version) : ''}
+                    ${d.generated_at ? `<span class="text-muted">as of ${d.generated_at.replace('T', ' ').replace('Z', '')}</span>` : ''}
+                    ${d.cached ? badge('cached', 'muted') : ''}
+                </div>
+            </div>
+        </section>`;
+        }
+
+        function renderServices(services) {
+            const items = (services ?? []).map(s => {
+                const healthy = s.state === 'healthy';
+                const stateColor = healthy ? 'success' : 'danger';
+                return `
+            <article class="rounded-xl border border-white/10 bg-secondary/70 p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-background">
+                            <i class="fas ${s.scope === 'database' ? 'fa-database' : 'fa-hdd'} text-xs text-muted"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-text-secondary">${s.name}</p>
+                            ${s.detail ? `<p class="text-xs text-muted mt-0.5">${s.detail}</p>` : ''}
+                            ${s.error ? `<p class="text-xs text-danger mt-0.5">${s.error}</p>` : ''}
+                        </div>
+                    </div>
+                    ${badge(s.state ?? 'unknown', stateColor)}
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    ${pill(s.scope)}
+                    ${s.last_checked ? pill(s.last_checked) : ''}
+                    ${s.latency_ms !== undefined ? pill(s.latency_ms + ' ms') : ''}
+                </div>
+            </article>`;
+            }).join('');
+            return section('<i class="fas fa-heartbeat mr-2 text-highlight text-sm"></i>Service Health',
+                `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${items}</div>`);
+        }
+
+        function renderRuntime(rt) {
+            if (!rt) return '';
+            const stats = [
+                rt.uptime && { label: 'Uptime', value: rt.uptime },
+                rt.go_version && { label: 'Go Version', value: rt.go_version },
+            ].filter(Boolean);
+
+            const cards = stats.map(s => `
+            <div class="rounded-lg border border-white/10 bg-secondary/70 p-3">
+                <p class="text-xs text-muted">${s.label}</p>
+                <p class="mt-1 font-semibold text-text-secondary">${s.value}</p>
+            </div>`).join('');
+
+            const labels = rt.labels ? Object.entries(rt.labels).map(([k, v]) => pill(`${k}=${v}`)).join('') : '';
+
+            return section('<i class="fas fa-microchip mr-2 text-highlight text-sm"></i>Runtime',
+                `<div class="grid grid-cols-2 gap-3 text-sm">${cards}</div>
+             ${labels ? `<div class="mt-3 flex flex-wrap gap-2">${labels}</div>` : ''}`);
+        }
+
+        function renderEndpoints(endpoints) {
+            const methodColor = { GET: 'highlight', POST: 'success', DELETE: 'danger', PUT: 'warning' };
+            const items = (endpoints ?? []).map(ep => `
+            <article class="rounded-xl border border-white/10 bg-secondary/70 p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="font-medium text-text-secondary">${ep.name}</p>
+                        ${ep.description ? `<p class="mt-0.5 text-xs text-muted">${ep.description}</p>` : ''}
+                    </div>
+                    ${ep.status ? badge(ep.status, ep.status === 'ok' ? 'success' : 'warning') : ''}
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    ${ep.method ? badge(ep.method, methodColor[ep.method] ?? 'muted') : ''}
+                    ${ep.path ? pill(ep.path) : ''}
+                    ${ep.latency_ms !== undefined ? pill(ep.latency_ms + ' ms') : ''}
+                </div>
+            </article>`).join('');
+            return section('<i class="fas fa-plug mr-2 text-highlight text-sm"></i>Endpoints',
+                `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${items}</div>`);
+        }
+
+        /* ── main render ──────────────────────────────────────────── */
+        function render(d) {
+            const content = document.getElementById('status-content');
+            content.innerHTML = [
+                renderSummary(d),
+                renderServices(d.services),
+                renderRuntime(d.runtime),
+                renderEndpoints(d.endpoints),
+            ].join('');
+            content.classList.remove('hidden');
+            content.classList.add('flex', 'flex-col', 'gap-6');
+        }
+
+        /* ── fetch ────────────────────────────────────────────────── */
+        window.loadStatus = async function () {
+            document.getElementById('status-loading').classList.remove('hidden');
+            document.getElementById('status-error').classList.add('hidden');
+            document.getElementById('status-content').classList.add('hidden');
+
+            try {
+                const res = await fetch('/api/status');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                document.getElementById('status-loading').classList.add('hidden');
+                render(data);
+            } catch (err) {
+                document.getElementById('status-loading').classList.add('hidden');
+                document.getElementById('status-error-msg').textContent = err.message;
+                document.getElementById('status-error').classList.remove('hidden');
+            }
+        };
+
+        loadStatus();
+    })();
+</script>

@@ -1,0 +1,35 @@
+# ── Environment & secrets ────────────────────────────────────
+.env
+secrets/.env
+# .env.example is intentionally NOT ignored — safe to commit
+
+# ── Build artefacts ──────────────────────────────────────────
+go-media-storage
+go-media-storage.exe
+
+# ── Storage (user-uploaded files) ────────────────────────────
+storage/
+
+# ── Runtime data (generated from *_example.json) ─────────────
+data/site.json
+data/whitelist.json
+
+# ── Logs ─────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Editor / IDE ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Python (if any tooling) ───────────────────────────────────
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# ── OS files ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

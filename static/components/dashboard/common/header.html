@@ -1,0 +1,36 @@
+<header
+    class="fixed top-0 left-0 right-0 z-20 h-16 bg-background/70 backdrop-blur-sm border-b border-white/10 lg:left-64">
+    <div class="h-full w-full px-4 md:px-6 lg:px-8">
+        <div class="flex h-full items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                <button type="button" onclick="toggleSidebar()"
+                    class="inline-flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-add-to-cart-hover hover:text-text-secondary focus:outline-none focus:ring-2 focus:ring-highlight/60 md:hidden"
+                    aria-label="Toggle sidebar">
+                    <i class="fas fa-bars text-base"></i>
+                </button>
+
+                <a href="/dashboard" class="flex items-center gap-2 min-w-0 group">
+                    {{ if .site.favicon }}
+                    <img src="{{.site.favicon }}" alt="{{.site.title }}"
+                        class="h-7 w-auto transition-transform group-hover:scale-105">
+                    {{ end }}
+                    <span class="truncate text-lg font-heading font-semibold text-text-secondary">
+                        Dashboard
+                    </span>
+                </a>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="/"
+                    class="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs sm:text-sm text-muted transition-colors hover:bg-add-to-cart-hover hover:text-text-secondary">
+                    <i class="fas fa-home text-xs"></i>
+                    Home
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<script>
+
+</script>

@@ -1,0 +1,434 @@
+<section class="relative overflow-hidden">
+    <div class="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-highlight/10 blur-3xl"></div>
+    <div class="pointer-events-none absolute -left-16 bottom-0 h-40 w-40 rounded-full bg-btn-primary/10 blur-3xl"></div>
+
+    <div class="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-highlight">Dashboard Upload</p>
+            <h2 class="mt-1 text-lg font-heading font-semibold text-text-secondary md:text-xl">Drop, review, and publish
+                in one flow</h2>
+        </div>
+        <span class="rounded-full border border-white/10 bg-secondary/70 px-3 py-1 text-xs text-muted">Fast queue
+            mode</span>
+    </div>
+
+    <form id="dashboard-upload-form" class="relative z-10 mt-5 space-y-4" novalidate
+        onsubmit="handleDashboardUpload(event)">
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-5">
+            <div id="dashboard-drop-zone"
+                class="group relative overflow-hidden rounded-lg border-2 border-dashed border-white/10 bg-background/80 p-5 md:p-7 transition-all duration-200 hover:border-highlight/60 hover:bg-highlight/5 xl:col-span-3"
+                data-drop-zone>
+                <div
+                    class="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-lg bg-highlight/10 blur-2xl">
+                </div>
+                <div class="relative z-10 flex h-full flex-col justify-between gap-5">
+                    <div>
+                        <div
+                            class="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-highlight/30 bg-highlight/10 text-highlight">
+                            <i class="fas fa-cloud-upload-alt text-xl"></i>
+                        </div>
+                        <p class="mt-3 text-base font-semibold text-text-secondary md:text-lg">Drag and drop files here
+                        </p>
+                        <p class="mt-1 text-sm text-muted">Build your upload queue before sending it live.</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <label for="dashboard-upload-files"
+                            class="inline-flex cursor-pointer items-center justify-center rounded-lg bg-btn-primary px-4 py-2 text-sm font-semibold text-btn-primary-text transition-colors hover:bg-btn-primary-hover">
+                            Browse Files
+                        </label>
+                        <input id="dashboard-upload-files" name="files" type="file" multiple class="hidden"
+                            data-file-input>
+                        <span class="text-xs text-muted">Supports images, video, audio, and documents</span>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="rounded-lg border border-white/10 bg-background/70 p-4 xl:col-span-2">
+                <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Upload Control</p>
+                <div class="mt-3">
+                    <label for="dashboard-upload-vault"
+                        class="mb-1 block text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+                        Target Vault
+                    </label>
+                    <div class="relative">
+                        <select id="dashboard-upload-vault" name="vault"
+                            class="w-full appearance-none rounded-lg border border-white/15 bg-secondary px-3 py-2 pr-9 text-sm text-text-secondary outline-none transition-colors focus:border-highlight/60"
+                            required>
+                        </select>
+                        <i
+                            class="fas fa-chevron-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <span
+                        class="rounded-md border border-white/10 bg-secondary px-2 py-1 text-xs text-muted">Image</span>
+                    <span
+                        class="rounded-md border border-white/10 bg-secondary px-2 py-1 text-xs text-muted">Video</span>
+                    <span
+                        class="rounded-md border border-white/10 bg-secondary px-2 py-1 text-xs text-muted">Audio</span>
+                    <span
+                        class="rounded-md border border-white/10 bg-secondary px-2 py-1 text-xs text-muted">Document</span>
+                </div>
+                <div class="mt-4 rounded-lg border border-white/10 bg-secondary/60 p-3">
+                    <p class="text-xs text-muted">Tip: keep filenames short and meaningful for faster browsing later.
+                    </p>
+                </div>
+
+                <div class="mt-3 rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                    <p class="text-xs text-yellow-600/90 dark:text-yellow-400/90">
+                        <i class="fas fa-exclamation-triangle mr-1"></i> Note: If your domain uses a Cloudflare Proxy
+                        (Free tier), file uploads are hard-limited to 100MB. Please ensure files are &lt;99MB to prevent
+                        failures, or disable the proxy.
+                    </p>
+                </div>
+
+                <button id="dashboard-upload-submit" type="submit"
+                    class="mt-4 relative inline-flex w-full items-center justify-center overflow-hidden rounded-lg bg-btn-primary px-4 py-2.5 text-sm font-semibold text-btn-primary-text transition-colors hover:bg-btn-primary-hover">
+                    <span id="dashboard-upload-progress"
+                        class="absolute inset-y-0 left-0 bg-highlight/30 w-0 transition-all duration-200"></span>
+                    <span class="relative z-10">Upload Files</span>
+                </button>
+            </aside>
+        </div>
+
+        {{ template "components/pages/dashboard_upload/props/upload_section_props/upload_result" . }}
+
+        {{ template "components/pages/dashboard_upload/props/upload_section_props/selected_preview" . }}
+    </form>
+</section>
+
+<script>
+    const uploadState = {
+        files: []
+    };
+
+
+    async function fetchVaultsInfo() {
+        try {
+            const response = await fetch('/api/vaults/info');
+            if (!response.ok) {
+                throw new Error('Failed to fetch vaults: ' + response.statusText);
+            }
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || result.message || 'Failed to fetch vaults');
+            }
+
+            const vaults = result.data || [];
+
+            const vaultSelect = document.getElementById('dashboard-upload-vault');
+            if (!vaultSelect) {
+                console.error("Vault select element not found");
+                return;
+            }
+
+            vaults.forEach(function (vault) {
+                const option = document.createElement('option');
+                option.value = vault.id;
+                option.textContent = `#${vault.id} - ${vault.name} (${vault.is_active ? 'Active' : 'Inactive'})`;
+                vaultSelect.appendChild(option);
+            });
+
+        } catch (error) {
+            console.error('Error fetching vaults:', error);
+            showNotification('Unable to load vaults. Please refresh the page.', 'error');
+        }
+    }
+
+    const uploadUI = {
+        form: document.getElementById('dashboard-upload-form'),
+        dropZone: document.getElementById('dashboard-drop-zone'),
+        input: document.getElementById('dashboard-upload-files'),
+        submit: document.getElementById('dashboard-upload-submit'),
+        progress: document.getElementById('dashboard-upload-progress'),
+        vault: document.getElementById('dashboard-upload-vault'),
+        selectedFiles: document.getElementById('dashboard-selected-files'),
+        fileCount: document.getElementById('dashboard-file-count'),
+        fileSize: document.getElementById('dashboard-file-size'),
+        uploadResults: document.getElementById('dashboard-upload-results'),
+        uploadCount: document.getElementById('dashboard-upload-count'),
+        recentRows: document.getElementById('dashboard-recent-rows')
+    };
+
+    function hasUploadUI() {
+        return uploadUI.form && uploadUI.dropZone && uploadUI.input && uploadUI.submit && uploadUI.selectedFiles && uploadUI.fileCount;
+    }
+
+    function hasSelectedVault() {
+        return !!(uploadUI.vault && uploadUI.vault.value);
+    }
+
+
+
+
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+
+    function setDropZoneActive(active) {
+        if (active) {
+            uploadUI.dropZone.classList.add('border-highlight', 'bg-highlight/5');
+            return;
+        }
+        uploadUI.dropZone.classList.remove('border-highlight', 'bg-highlight/5');
+    }
+
+    function detectFileKind(file) {
+        const type = String(file.type || '').toLowerCase();
+        if (type.startsWith('image/')) return 'image';
+        if (type.startsWith('video/')) return 'video';
+        if (type.startsWith('audio/')) return 'audio';
+        return 'file';
+    }
+
+    function fileIconClass(kind) {
+        if (kind === 'audio') return 'fas fa-file-audio';
+        if (kind === 'video') return 'fas fa-file-video';
+        if (kind === 'image') return 'fas fa-file-image';
+        return 'fas fa-file-alt';
+    }
+
+    function recentPreviewMarkup(file, kind) {
+        if (kind === 'image') {
+            return `<img src="${URL.createObjectURL(file)}" alt="${escapeHtml(file.name)}" class="h-full w-full object-cover">`;
+        }
+        if (kind === 'video') {
+            return `
+                <video class="h-full w-full object-cover" muted playsinline>
+                    <source src="${URL.createObjectURL(file)}" type="${escapeHtml(file.type || 'video/mp4')}">
+                </video>
+                <div class="absolute inset-0 flex items-center justify-center text-highlight/80 pointer-events-none">
+                    <i class="fas fa-play-circle text-3xl"></i>
+                </div>
+            `;
+        }
+        return `
+            <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-highlight/10 text-highlight">
+                <i class="${fileIconClass(kind)} text-2xl"></i>
+            </div>
+        `;
+    }
+
+    function bindRecentCardActions(card, file) {
+        const trigger = card.querySelector('[data-menu-trigger]');
+        const menu = card.querySelector('[data-menu]');
+        const detailsBtn = card.querySelector('.dashboard-upload-details');
+        const deleteBtn = card.querySelector('.dashboard-upload-delete');
+
+        if (trigger && menu) {
+            trigger.addEventListener('click', function (event) {
+                event.stopPropagation();
+                const isHidden = menu.classList.contains('hidden');
+
+                document.querySelectorAll('.dashboard-upload-menu').forEach(function (otherMenu) {
+                    if (otherMenu !== menu) {
+                        otherMenu.classList.add('hidden');
+                    }
+                });
+
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                    return;
+                }
+                menu.classList.add('hidden');
+            });
+        }
+
+        if (detailsBtn) {
+            detailsBtn.addEventListener('click', function () {
+                if (menu) menu.classList.add('hidden');
+                showPopupNotification(`${file.name}\n${file.type || 'unknown'} • ${formatBytes(file.size)}`, 'info', 2800);
+            });
+        }
+
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function () {
+                if (menu) menu.classList.add('hidden');
+                card.remove();
+                showNotification('Upload card removed.', 'warning');
+            });
+        }
+    }
+
+    async function handleDashboardUpload(event) {
+        event.preventDefault();
+
+        if (uploadState.files.length === 0) {
+            showNotification('Please select at least one file.', 'warning');
+            return;
+        }
+
+        if (!hasSelectedVault()) {
+            showNotification('Please select a vault first.', 'warning');
+            return;
+        }
+
+        uploadUI.submit.disabled = true;
+
+        // Target the span inside the button that holds the text
+        const textSpan = uploadUI.submit.querySelector('.relative.z-10');
+        const originalText = textSpan.innerHTML;
+        textSpan.innerHTML = '<i class="fas fa-spinner animate-spin mr-2"></i>Uploading...';
+
+        if (uploadUI.progress) {
+            uploadUI.progress.style.width = '0%';
+        }
+
+        try {
+            const formData = new FormData();
+            uploadState.files.forEach(function (file) {
+                formData.append('file', file);
+            });
+            formData.append('vault_id', uploadUI.vault.value);
+
+            const response = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/frontend-upload', true);
+
+                xhr.upload.onprogress = function (e) {
+                    if (e.lengthComputable && uploadUI.progress) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        uploadUI.progress.style.width = percentComplete + '%';
+
+                        // Optional: Update text with percentage
+                        textSpan.innerHTML = `<i class="fas fa-spinner animate-spin mr-2"></i>Uploading... ${Math.round(percentComplete)}%`;
+                    }
+                };
+
+                xhr.onload = function () {
+                    const contentType = xhr.getResponseHeader('content-type') || '';
+                    let result;
+                    try {
+                        result = contentType.includes('application/json') ? JSON.parse(xhr.responseText) : { message: xhr.responseText };
+                    } catch (err) {
+                        result = { message: xhr.responseText };
+                    }
+
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(result);
+                    } else {
+                        reject(new Error(result.message || 'Upload failed.'));
+                    }
+                };
+
+                xhr.onerror = function () {
+                    reject(new Error('Network error occurred during upload.'));
+                };
+
+                xhr.send(formData);
+            });
+
+            if (typeof fetchRecentUploads === 'function') {
+                fetchRecentUploads();
+            }
+            uploadState.files = [];
+            uploadUI.input.value = '';
+            renderSelectedFiles();
+
+            renderUploadResults(response.data || []);
+
+            showNotification(response.message || 'Files uploaded successfully.', 'success');
+        } catch (error) {
+            showNotification(error.message || 'Upload failed.', 'error');
+        } finally {
+            uploadUI.submit.disabled = false;
+            textSpan.innerHTML = originalText;
+            if (uploadUI.progress) {
+                // Reset progress bar after a short delay so user sees 100% completion
+                setTimeout(() => {
+                    uploadUI.progress.style.width = '0%';
+                }, 1000);
+            }
+        }
+    }
+
+    function initDashboardUpload() {
+        if (!hasUploadUI()) return;
+
+        renderSelectedFiles();
+        renderUploadResults([]);
+
+        uploadUI.input.addEventListener('change', function () {
+            updateFromFileList(uploadUI.input.files);
+        });
+
+        if (uploadUI.vault) {
+            uploadUI.vault.addEventListener('change', function () {
+                renderSelectedFiles();
+            });
+        }
+
+        uploadUI.selectedFiles.addEventListener('click', function (event) {
+            const removeButton = event.target.closest('[data-remove-selected]');
+            if (!removeButton) {
+                return;
+            }
+
+            removeSelectedFile(removeButton.getAttribute('data-remove-selected'));
+        });
+
+        uploadUI.dropZone.addEventListener('click', function (event) {
+            if (event.target.closest('button, a, label, input')) {
+                return;
+            }
+            uploadUI.input.click();
+        });
+
+        uploadUI.dropZone.addEventListener('dragover', function (event) {
+            event.preventDefault();
+            setDropZoneActive(true);
+        });
+
+        uploadUI.dropZone.addEventListener('dragleave', function () {
+            setDropZoneActive(false);
+        });
+
+        uploadUI.dropZone.addEventListener('drop', function (event) {
+            event.preventDefault();
+            setDropZoneActive(false);
+
+            const files = event.dataTransfer && event.dataTransfer.files;
+            if (!files || files.length === 0) {
+                return;
+            }
+
+            uploadUI.input.files = files;
+            updateFromFileList(files);
+        });
+
+
+        document.addEventListener('click', function (event) {
+            const clickedInMenu = event.target.closest('[data-menu]');
+            const clickedTrigger = event.target.closest('[data-menu-trigger]');
+
+            if (clickedInMenu || clickedTrigger) {
+                return;
+            }
+
+            document.querySelectorAll('.dashboard-upload-menu').forEach(function (menu) {
+                menu.classList.add('hidden');
+            });
+        });
+
+        document.querySelectorAll('#dashboard-recent-rows .group').forEach(function (card) {
+            const nameNode = card.querySelector('.p-3 p');
+            const typeNode = card.querySelector('.p-3 p.text-xs.text-muted');
+            const fallbackFile = {
+                name: nameNode ? nameNode.textContent.trim() : 'file',
+                type: typeNode ? typeNode.textContent.split('•')[0].trim() : 'File',
+                size: 0
+            };
+            bindRecentCardActions(card, fallbackFile);
+        });
+    }
+
+    initDashboardUpload();
+    fetchVaultsInfo();
+</script>

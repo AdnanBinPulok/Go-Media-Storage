@@ -1,0 +1,120 @@
+<section class="rounded-2xl border border-white/10 bg-background/80 p-6 md:p-8 shadow-soft backdrop-blur-md">
+    <div class="mb-8 text-center">
+        <h2 class="text-2xl font-heading font-bold text-text-secondary tracking-tight">Create Account</h2>
+        <p class="text-sm text-muted mt-2">Join Media Storage today</p>
+    </div>
+
+    <form id="signup-form" class="space-y-5" onsubmit="handleSignup(event)">
+        <div class="space-y-2">
+            <label for="signup-full-name" class="text-sm font-medium text-text-secondary">Full Name</label>
+            <input id="signup-full-name" name="full_name" type="text" placeholder="John Doe"
+                class="w-full rounded-xl border border-white/10 bg-secondary/50 px-4 py-3 text-sm text-text-secondary placeholder:text-muted/70 focus:bg-secondary focus:border-link focus:outline-none focus:ring-1 focus:ring-link/50 transition-all"
+                autocomplete="name" required>
+        </div>
+
+        <div class="space-y-2">
+            <label for="signup-email" class="text-sm font-medium text-text-secondary">Email Address</label>
+            <input id="signup-email" name="email" type="email" placeholder="name@example.com"
+                class="w-full rounded-xl border border-white/10 bg-secondary/50 px-4 py-3 text-sm text-text-secondary placeholder:text-muted/70 focus:bg-secondary focus:border-link focus:outline-none focus:ring-1 focus:ring-link/50 transition-all"
+                autocomplete="email" required>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div class="space-y-2">
+                <label for="signup-password" class="text-sm font-medium text-text-secondary">Password</label>
+                <input id="signup-password" name="password" type="password" placeholder="��������"
+                    class="w-full rounded-xl border border-white/10 bg-secondary/50 px-4 py-3 text-sm text-text-secondary placeholder:text-muted/70 focus:bg-secondary focus:border-link focus:outline-none focus:ring-1 focus:ring-link/50 transition-all"
+                    autocomplete="new-password" required>
+            </div>
+
+            <div class="space-y-2">
+                <label for="signup-password-confirm" class="text-sm font-medium text-text-secondary">Confirm</label>
+                <input id="signup-password-confirm" name="password_confirm" type="password" placeholder="��������"
+                    class="w-full rounded-xl border border-white/10 bg-secondary/50 px-4 py-3 text-sm text-text-secondary placeholder:text-muted/70 focus:bg-secondary focus:border-link focus:outline-none focus:ring-1 focus:ring-link/50 transition-all"
+                    autocomplete="new-password" required>
+            </div>
+        </div>
+
+        <div class="pt-4">
+            <button id="signup-submit" type="submit"
+                class="w-full rounded-xl bg-btn-primary px-4 py-3 text-sm font-semibold text-btn-primary-text transition-all hover:bg-btn-primary-hover shadow-sm hover:shadow active:scale-[0.98]">
+                Sign Up
+            </button>
+        </div>
+
+        <p class="text-center text-sm text-muted pt-6 border-t border-white/5 mt-6">
+            Already have an account?
+            <a href="/login" class="text-link hover:text-highlight transition-colors font-medium ml-1">Log in here</a>
+        </p>
+    </form>
+</section>
+<script>
+    async function handleSignup(event) {
+        event.preventDefault();
+
+        const form = event.target;
+        const submitButton = document.getElementById("signup-submit");
+
+        submitButton.disabled = true;
+        const submitButtonOriginalContent = submitButton.innerHTML;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Signing Up...';
+
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        if (!data.full_name || !data.email || !data.password || !data.password_confirm) {
+            showNotification("Please fill all required fields.", "warning");
+            submitButton.disabled = false;
+            submitButton.innerHTML = submitButtonOriginalContent;
+            return;
+        }
+
+        if (String(data.password).length < 8) {
+            showNotification("Password must be at least 8 characters.", "warning");
+            submitButton.disabled = false;
+            submitButton.innerHTML = submitButtonOriginalContent;
+            return;
+        }
+
+        if (data.password !== data.password_confirm) {
+            showNotification("Password and confirm password must match.", "warning");
+            submitButton.disabled = false;
+            submitButton.innerHTML = submitButtonOriginalContent;
+            return;
+        }
+
+        try {
+            const payload = {
+                full_name: data.full_name,
+                email: data.email,
+                password: data.password
+            };
+
+            const response = await fetch("/api/signup", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || result.message || "Signup failed. Please try again.");
+            }
+
+            showNotification("Signup successful! Please check your email to verify your account.", "success");
+
+            setTimeout(() => {
+                window.location.href = "/";
+            }, 500);
+
+        } catch (error) {
+            showNotification("An error occurred: " + error.message, "error");
+        } finally {
+            submitButton.disabled = false;
+            submitButton.innerHTML = submitButtonOriginalContent;
+        }
+    }
+</script>

@@ -1,0 +1,43 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Preload critical resources first -->
+    <link rel="preload" href="/styles/main.css" as="style">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+        as="style" crossorigin="anonymous">
+
+    <title>Status - {{.site.title }}</title>
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{{.site.favicon }}" type="image/x-icon">
+
+    <!-- Critical CSS loaded synchronously -->
+    <link rel="stylesheet" href="/styles/main.css">
+    <!-- External resources -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+        crossorigin="anonymous">
+
+    {{ template "components/utils/tailwind" . }}
+</head>
+{{ template "components/utils/main" . }}
+{{ template "components/utils/notification" . }}
+{{ template "components/utils/popupNotification" . }}
+
+<body
+    class="min-h-screen bg-background text-primary custom-scrollbar transition-colors duration-300 ease-in-out font-display flex flex-col">
+    {{ template "components/common/header" . }}
+
+    <main
+        class="container w-full md:max-w-[80%] mx-auto min-h-[calc(100vh-16rem)] space-y-3 md:space-y-6 lg:space-y-8 overflow-hidden py-4 md:py-6 lg:py-8">
+        {{ template "components/pages/status/main" . }}
+    </main>
+
+    {{ template "components/common/footer" . }}
+</body>
+
+
+</html>

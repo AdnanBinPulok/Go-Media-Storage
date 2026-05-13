@@ -1,0 +1,135 @@
+<script>
+    function openDeleteVaultModal(id) {
+        const existingModal = document.getElementById('deleteVaultModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const vaultData = typeof getVaultDataById === 'function' ? getVaultDataById(id) : null;
+        if (!vaultData) {
+            showPopupNotification('Vault not found. Please refresh and try again.', 'error');
+            return;
+        }
+
+        const safe = (value) => String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
+        const totalFiles = Number(vaultData.total_files || 0);
+        const totalSizeBytes = Number(vaultData.total_size_bytes || 0);
+
+        const modal = document.createElement('div');
+        modal.id = 'deleteVaultModal';
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4';
+
+        modal.innerHTML = `
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-[2px]" onclick="closeModal('deleteVaultModal')"></div>
+
+            <div class="relative w-full max-w-lg overflow-hidden rounded-2xl border border-danger/25 bg-secondary/95 shadow-2xl">
+                <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg border border-danger/30 bg-danger/10 text-danger">
+                            <i class="fas fa-triangle-exclamation text-sm"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-semibold text-text-secondary">Delete Vault</h2>
+                            <p class="mt-0.5 text-xs text-muted">This action cannot be undone.</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="closeModal('deleteVaultModal')"
+                        class="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-background/50 text-muted transition-all hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
+                        aria-label="Close delete vault modal">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+
+                <form id="deleteVaultForm" class="space-y-4 px-5 py-4" onsubmit="handleVaultDelete(event, ${id})">
+                    <p class="text-sm text-muted">
+                        You are about to permanently remove this vault from your account.
+                    </p>
+                    <div class="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2.5">
+                        <p class="text-sm font-medium text-danger">Warning: all files inside this vault will be deleted.</p>
+                    </div>
+
+                    <div class="rounded-xl border border-white/10 bg-background/40 p-3">
+                        <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                            <div>
+                                <p class="text-[10px] uppercase tracking-wide text-muted">Vault ID</p>
+                                <p class="mt-1 font-semibold text-text-secondary">${safe(vaultData.id)}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] uppercase tracking-wide text-muted">Status</p>
+                                <p class="mt-1 font-semibold ${vaultData.is_active ? 'text-success' : 'text-warning'}">${vaultData.is_active ? 'Active' : 'Inactive'}</p>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <p class="text-[10px] uppercase tracking-wide text-muted">Vault Name</p>
+                                <p class="mt-1 break-all font-semibold text-text-secondary">${safe(vaultData.name || 'Untitled Vault')}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] uppercase tracking-wide text-muted">Total Files</p>
+                                <p class="mt-1 font-semibold text-text-secondary">${safe(totalFiles.toLocaleString())}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] uppercase tracking-wide text-muted">Storage Used</p>
+                                <p class="mt-1 font-semibold text-text-secondary">${safe(formatBytes(totalSizeBytes))}</p>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="flex items-center justify-end gap-2 border-t border-white/10 px-5 py-4">
+                    <button type="button" onclick="closeModal('deleteVaultModal')"
+                        class="rounded-xl border border-white/10 bg-background/60 px-4 py-2 text-sm font-medium text-text-secondary transition-all hover:border-white/20 hover:bg-background">
+                        Cancel
+                    </button>
+                    <button type="submit" form="deleteVaultForm" id="deleteVaultSubmitBtn"
+                        class="rounded-xl bg-danger px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-danger/20 transition-all hover:bg-danger/90 hover:shadow-xl hover:shadow-danger/30 disabled:cursor-not-allowed disabled:opacity-50">
+                        Confirm Delete
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    async function handleVaultDelete(event, vaultId) {
+        event.preventDefault();
+
+        const deleteButton = document.getElementById('deleteVaultSubmitBtn');
+        const originalButtonContent = deleteButton.innerHTML;
+        deleteButton.disabled = true;
+        deleteButton.innerHTML = `<i class="fas fa-spinner animate-spin text-sm"></i>`;
+
+        try {
+            const response = await fetch(`/api/vaults/delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: vaultId })
+            });
+
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || result.message || 'Failed to delete vault');
+            }
+
+            closeModal('deleteVaultModal');
+            refreshVaults(false);
+            showNotification('Vault deleted successfully!', 'success', 500);
+        } catch (error) {
+            console.error("Network error while deleting vault:", error);
+            showPopupNotification(error.message || 'An error occurred while deleting the vault. Please try again.', 'error');
+        } finally {
+            deleteVaultSubmitBtn.innerHTML = originalButtonContent;
+            deleteVaultSubmitBtn.disabled = false;
+        }
+    }
+
+</script>

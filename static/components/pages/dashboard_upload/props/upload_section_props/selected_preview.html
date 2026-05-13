@@ -1,0 +1,87 @@
+<div class="flex flex-col overflow-hidden rounded-lg border border-white/10 bg-secondary/10">
+    <!-- Header -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-secondary/30 px-4 py-3">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-layer-group text-sm font-semibold text-primary/80"></i>
+            <h3 class="text-sm font-semibold text-text-secondary md:text-base">Upload Queue</h3>
+        </div>
+        <div class="flex items-center gap-1.5 text-xs font-medium">
+            <span id="dashboard-file-count" class="rounded-md bg-secondary/50 px-2 py-0.5 text-muted">0 files</span>
+            <span class="text-white/10">•</span>
+            <span id="dashboard-file-size" class="rounded-md bg-primary/10 px-2 py-0.5 text-primary/80">0 B</span>
+        </div>
+    </div>
+
+    <!-- Queue List -->
+    <div id="dashboard-selected-files"
+        class="custom-scrollbar max-h-[250px] overflow-y-auto p-1.5 text-sm text-muted md:p-2">
+        <div class="flex flex-col items-center justify-center py-8 text-center text-muted/40">
+            <i class="fas fa-inbox mb-3 text-3xl opacity-50"></i>
+            <p class="text-sm">No files selected</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function renderSelectedFiles() {
+        const count = uploadState.files.length;
+        const totalSize = uploadState.files.reduce(function (sum, file) {
+            return sum + (file.size || 0);
+        }, 0);
+
+        hideUploadResults();
+
+        uploadUI.fileCount.textContent = count + (count === 1 ? ' file' : ' files');
+        if (uploadUI.fileSize) {
+            uploadUI.fileSize.textContent = formatBytes(totalSize);
+        }
+        const shouldDisableSubmit = count === 0 || !hasSelectedVault();
+        uploadUI.submit.disabled = shouldDisableSubmit;
+        uploadUI.submit.classList.toggle('opacity-60', shouldDisableSubmit);
+        uploadUI.submit.classList.toggle('cursor-not-allowed', shouldDisableSubmit);
+
+        if (count === 0) {
+            uploadUI.selectedFiles.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-8 text-center text-muted/40">
+                    <i class="fas fa-inbox mb-3 text-3xl opacity-50"></i>
+                    <p class="text-sm">No files selected</p>
+                </div>
+            `;
+            return;
+        }
+
+        const list = uploadState.files.map(function (file) {
+            return `
+                <div class="group flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-white/5">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary/50 text-muted transition-colors group-hover:bg-primary/20 group-hover:text-primary">
+                            <i class="${fileIconClass(detectFileKind(file))} text-xs"></i>
+                        </span>
+                        <div class="flex min-w-0 flex-col justify-center">
+                            <p class="truncate text-sm font-medium text-text-secondary">${escapeHtml(file.name)}</p>
+                            <p class="truncate text-[11px] text-muted/70">${escapeHtml(file.type || 'unknown type')} <span class="mx-1 text-white/10">•</span> ${formatBytes(file.size)}</p>
+                        </div>
+                    </div>
+                    <button type="button" class="shrink-0 rounded-md p-1.5 text-muted opacity-60 transition-all hover:bg-danger/20 hover:text-danger hover:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                        data-remove-selected="${escapeHtml(file.name)}" title="Remove file">
+                        <i class="fas fa-times text-sm"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
+
+        uploadUI.selectedFiles.innerHTML = `<div class="flex flex-col gap-0.5">${list}</div>`;
+    }
+
+    function updateFromFileList(fileList) {
+        uploadState.files = Array.from(fileList || []);
+        renderSelectedFiles();
+    }
+
+    function removeSelectedFile(fileName) {
+        uploadState.files = uploadState.files.filter(function (file) {
+            return file.name !== fileName;
+        });
+        renderSelectedFiles();
+    }
+</script>

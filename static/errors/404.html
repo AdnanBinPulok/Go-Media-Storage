@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Not Found</title>
+    <!doctype html>
+    <html lang="en">
+
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Page not found</title>
+        <style>
+            :root {
+                --bg: #f8fafc;
+                --card: #ffffff;
+                --muted: #64748b;
+                --accent: #0ea5a4;
+                --glass: rgba(15, 23, 42, 0.04)
+            }
+
+            * {
+                box-sizing: border-box
+            }
+
+            html,
+            body {
+                height: 100%;
+                margin: 0;
+                font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+                background: var(--bg);
+                color: #0f172a
+            }
+
+            .site {
+                min-height: 100%;
+                display: flex;
+                flex-direction: column
+            }
+
+            .container {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px
+            }
+
+            .panel {
+                width: 100%;
+                max-width: 680px;
+                background: var(--card);
+                border-radius: 14px;
+                padding: 20px;
+                box-shadow: 0 6px 24px var(--glass);
+                display: flex;
+                gap: 18px;
+                align-items: center
+            }
+
+            .icon {
+                flex: 0 0 64px;
+                height: 64px;
+                border-radius: 12px;
+                background: linear-gradient(135deg, var(--accent), #06b6d4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-weight: 700
+            }
+
+            .content {
+                flex: 1
+            }
+
+            h1 {
+                font-size: 18px;
+                margin: 0 0 6px
+            }
+
+            p {
+                margin: 0;
+                color: var(--muted);
+                font-size: 14px
+            }
+
+            .meta {
+                margin-top: 10px;
+                color: var(--muted);
+                font-size: 13px
+            }
+
+            .actions {
+                margin-top: 14px;
+                display: flex;
+                gap: 10px
+            }
+
+            .btn {
+                padding: 10px 14px;
+                border-radius: 10px;
+                background: #0f172a;
+                color: #fff;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 14px
+            }
+
+            .link {
+                padding: 10px 14px;
+                border-radius: 10px;
+                background: transparent;
+                border: 1px solid #e6eef0;
+                color: #0f172a;
+                text-decoration: none;
+                font-size: 14px
+            }
+
+            footer {
+                height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                color: var(--muted);
+                background: transparent
+            }
+
+            @media (max-width:520px) {
+                .panel {
+                    flex-direction: column;
+                    align-items: flex-start
+                }
+
+                .icon {
+                    width: 56px;
+                    height: 56px
+                }
+            }
+        </style>
+    </head>
+
+<body>
+    <div class="site">
+        <main class="container">
+            <section class="panel" role="main" aria-labelledby="err-title">
+                <div class="icon">404</div>
+                <div class="content">
+                    <h1 id="err-title">Page not found</h1>
+                    <p>Sorry — we couldn't find the page you're looking for.</p>
+
+                    {{if .Path}}
+                    <div class="meta"><strong>Requested:</strong> {{.Path}}</div>
+                    {{end}}
+
+                    <div class="actions">
+                        <a class="btn" href="/">Home</a>
+                        <a class="link" href="javascript:location.reload()">Reload</a>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            {{if .IP}}Your IP: {{.IP}}{{end}}
+        </footer>
+    </div>
+</body>
+
+</html>

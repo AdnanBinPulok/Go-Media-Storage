@@ -1,0 +1,11 @@
+{
+    "title": "Go Media Storage",
+    "favicon": "/assets/images/favicon.png",
+    "description": "A simple and efficient media storage solution built with Go, designed to handle file uploads, storage, and retrieval with ease.",
+    "author": "Glider Development",
+    "version": "1.0.0",
+    "social_links": {
+        "website": "https://gliders.dev",
+        "linkedin": "https://www.linkedin.com/company/gliders-development/"
+    }
+}

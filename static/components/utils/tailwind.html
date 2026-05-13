@@ -1,0 +1,57 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- Updated Fonts: Poppins + Roboto -->
+<link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Roboto:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
+<link rel="preload" href="https://cdn.tailwindcss.com" as="script">
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- tailwind config -->
+<script id="tailwind-config">
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    "primary": "#22d3ee",
+                    "secondary": "#0b1120",
+                    "text-secondary": "#e2e8f0",
+                    "background": "#020617",
+                    "success": "#22c55e",
+                    "warning": "#f59e0b",
+                    "danger": "#ef4444",
+                    "muted": "#94a3b8",
+                    "text-primary": "#f3f4f61a",
+                    "highlight": "#38bdf8",
+                    "accent": "#14b8a6",
+                    "accent-600": "#0d9488",
+                    "link": "#60a5fa",
+                    "btn-primary": "#14b8a6",
+                    "btn-primary-hover": "#0d9488",
+                    "btn-primary-text": "#ffffff",
+                    "add-to-cart": "#111827",
+                    "add-to-cart-hover": "#1f2937",
+                    "add-to-cart-text": "#ffffff",
+                    "buy-now": "#f59e0b",
+                    "buy-now-hover": "#b45309",
+                    "buy-now-text": "#ffffff"
+                },
+                fontFamily: {
+                    "display": ["Poppins", "sans-serif"],   // For product titles
+                    "heading": ["Poppins", "sans-serif"],
+                    "sans": ["Roboto", "Inter", "sans-serif"], // Body text
+                    "serif": ["Georgia", "Times New Roman", "serif"],
+                    "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"]
+                },
+                boxShadow: {
+                    "soft": "0 4px 12px rgba(17,24,39,0.06)"
+                },
+                borderRadius: {
+                    "xl": "1rem"
+                }
+            },
+        },
+    }
+</script>
