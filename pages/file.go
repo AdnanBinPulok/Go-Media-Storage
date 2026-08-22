@@ -10,18 +10,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// sanitizeMimeType returns application/octet-stream for any MIME type that a
-// browser could execute as a script or render as a webpage, preventing stored XSS.
-func sanitizeMimeType(mime string) string {
-	switch mime {
-	case "text/html", "text/javascript", "application/javascript",
-		"application/xhtml+xml", "text/xml", "application/xml",
-		"image/svg+xml", "application/x-httpd-php", "text/x-php":
-		return "application/octet-stream"
-	}
-	return mime
-}
-
 // Get example: /file/view/abc123def456.jpg
 func FilePage(router fiber.Router) {
 	router.Get("/file/view/:storedName", func(c *fiber.Ctx) error {
@@ -42,7 +30,7 @@ func FilePage(router fiber.Router) {
 		filePath := mediaFileRecord.StoragePath
 
 		OriginalName := mediaFileRecord.OriginalName
-		MimeType := sanitizeMimeType(mediaFileRecord.MimeType)
+		MimeType := viewMimeType(mediaFileRecord.MimeType)
 		FileSizeBytes := mediaFileRecord.FileSizeBytes
 
 		c.Set("Content-Type", MimeType)
