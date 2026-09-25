@@ -192,13 +192,24 @@ docker run -d \
 
 #### Prerequisites
 
-- **Go 1.25.1 or newer** (this is the build floor; do not downgrade dependencies to target older Go)
-  - **Ubuntu/Debian apt `golang-go` is often 1.18** — that version cannot parse this repo’s `go.mod` (`toolchain` / patch `go` line). `GOTOOLCHAIN=auto` only works on Go **1.21+**.
-  - `pm2_start.sh` detects that case and **bootstraps official Go 1.25.1** into `~/.cache/go-media-storage/go1.25.1` (needs network once).
-  - Servers with Go 1.21+ can build via `GOTOOLCHAIN=auto` without a full local upgrade.
-  - Air-gapped hosts must install Go ≥ 1.25.1 manually from https://go.dev/dl/
+- **Go 1.25.1 or newer** (install from https://go.dev/dl/ — do **not** use `apt install golang-go`; Ubuntu’s package is often 1.18 and cannot build this project)
 - PostgreSQL 14+
 - (Production) [pm2](https://pm2.keymetrics.io/) for process management
+
+**VPS / Ubuntu install (official Go):**
+
+```bash
+# Remove old apt Go from PATH if needed, then:
+curl -fsSL -o /tmp/go.tgz https://go.dev/dl/go1.25.1.linux-amd64.tar.gz
+sudo rm -rf /usr/local/go
+sudo tar -C /usr/local -xzf /tmp/go.tgz
+echo 'export PATH=/usr/local/go/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+go version   # should print go1.25.1
+```
+
+(Use `go1.25.1.linux-arm64.tar.gz` on ARM servers.)
+
 
 ### 1. Clone
 
@@ -264,7 +275,7 @@ chmod +x pm2_start.sh update.sh
 ./pm2_start.sh
 ```
 
-`pm2_start.sh` ensures a usable Go toolchain (bootstraps 1.25.1 when system Go is missing or older than 1.21), sets `GOTOOLCHAIN=auto`, then builds and starts the binary under pm2 as `GO_MEDIA_STORAGE`. For future updates:
+`pm2_start.sh` builds the binary and starts it under pm2 as `GO_MEDIA_STORAGE`. Your VPS must already have Go 1.25.1+ on `PATH`. For future updates:
 
 ```bash
 ./update.sh   # git pull + rebuild + pm2 restart
