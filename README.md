@@ -15,7 +15,7 @@ A self-hosted media storage server built with Go. Upload, organise, and serve fi
 - **Public status page** — live service health, runtime metrics, and endpoint listing via `GET /api/status` (cached, public-safe)
 - **Rate limiting** — in-process per-IP rate limiter on public routes
 - **Error pages** — custom 404, 429, and 500 HTML pages
-- **pm2 deployment** — `start.sh` / `update.sh` scripts for Linux production deploys
+- **pm2 deployment** — `pm2_start.sh` / `update.sh` scripts for Linux production deploys
 
 ---
 
@@ -23,7 +23,7 @@ A self-hosted media storage server built with Go. Upload, organise, and serve fi
 
 | Layer | Technology |
 |---|---|
-| Language | Go 1.25+ |
+| Language | Go 1.25.1+ |
 | HTTP framework | [Fiber v2](https://github.com/gofiber/fiber) |
 | Database | PostgreSQL via [pggo](https://github.com/AdnanBinPulok/pggo) |
 | Templates | Go HTML templates (server-side, Fiber template engine) |
@@ -41,7 +41,7 @@ A self-hosted media storage server built with Go. Upload, organise, and serve fi
 .
 ├── main.go                     # Entry point — wires Fiber, DB, routes, pages
 ├── go.mod / go.sum
-├── start.sh                    # Build + pm2 start (Linux/macOS)
+├── pm2_start.sh                # Build + pm2 start (Linux/macOS; Go 1.25.1+)
 ├── update.sh                   # git pull + rebuild + pm2 restart
 │
 ├── settings/
@@ -192,7 +192,9 @@ docker run -d \
 
 #### Prerequisites
 
-- Go 1.25+
+- **Go 1.25.1 or newer** (this is the build floor; do not downgrade dependencies to target older Go)
+  - Servers with an older Go install (1.21+) can still build if `GOTOOLCHAIN=auto` can download the `go1.25.1` toolchain from `go.mod`
+  - Air-gapped hosts must install Go ≥ 1.25.1 locally
 - PostgreSQL 14+
 - (Production) [pm2](https://pm2.keymetrics.io/) for process management
 
@@ -256,11 +258,11 @@ go run main.go
 ### 4. Build & run (production — Linux)
 
 ```bash
-chmod +x start.sh update.sh
-./start.sh
+chmod +x pm2_start.sh update.sh
+./pm2_start.sh
 ```
 
-This builds the binary and starts it under pm2 as `GO_MEDIA_STORAGE`. For future updates:
+`pm2_start.sh` sets `GOTOOLCHAIN=auto`, checks that `go` is available, then builds and starts the binary under pm2 as `GO_MEDIA_STORAGE`. For future updates:
 
 ```bash
 ./update.sh   # git pull + rebuild + pm2 restart
