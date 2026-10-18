@@ -30,18 +30,19 @@ func avatarStore() *avatar_generator.Cache {
 // be worth throttling. At 4096 the RGBA buffer alone is 64 MiB.
 const heavySize = 1024
 
-// avatarDefaultSize resolves the configured default against the generator's
+// AvatarDefaultSize resolves the configured default against the generator's
 // accepted range. A zero or out-of-range env value falls back safely instead of
 // producing a broken render.
-func avatarDefaultSize() int {
+func AvatarDefaultSize() int {
 	size := settings.AvatarConfigInstance.DefaultSize
 	if size == 0 {
 		size = avatar_generator.DefaultSize
 	}
-	return clampAvatarSize(size)
+	return ClampAvatarSize(size)
 }
 
-func clampAvatarSize(size int) int {
+// ClampAvatarSize pins size to the generator's [MinSize, MaxSize] range.
+func ClampAvatarSize(size int) int {
 	switch {
 	case size < avatar_generator.MinSize:
 		return avatar_generator.MinSize

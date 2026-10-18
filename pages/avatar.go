@@ -30,13 +30,13 @@ func AvatarPage(router fiber.Router) {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid UUID")
 		}
 
-		size := avatarDefaultSize()
+		size := AvatarDefaultSize()
 		if raw := c.Query("size"); raw != "" {
 			parsed, err := strconv.Atoi(raw)
 			if err != nil {
 				return c.Status(fiber.StatusBadRequest).SendString("Invalid size")
 			}
-			size = clampAvatarSize(parsed)
+			size = ClampAvatarSize(parsed)
 		}
 
 		// Oversized renders are gated. Queue time is not generation time, so it

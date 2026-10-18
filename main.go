@@ -43,6 +43,7 @@ func RegisterRoutes(app *fiber.App) {
 	routesList := []RouteFunc{
 		routes.PingRoutes,
 		routes.IpRoutes,
+		routes.AvatarRoutes,
 		routes.FrontUploadRoutes,
 		routes.UploadRoutes,
 		routes.SignupRoutes,

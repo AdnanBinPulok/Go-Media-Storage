@@ -18,7 +18,7 @@ var avatarPresets = []int{8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096}
 // hard-coding them in HTML and JS.
 func avatarTemplateData() fiber.Map {
 	return fiber.Map{
-		"default_size": avatarDefaultSize(),
+		"default_size": AvatarDefaultSize(),
 		"min_size":     avatar_generator.MinSize,
 		"max_size":     avatar_generator.MaxSize,
 		"presets":      avatarPresets,

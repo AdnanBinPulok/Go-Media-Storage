@@ -87,6 +87,7 @@ A self-hosted media storage server built with Go. Upload, organise, and serve fi
 ├── routes/                     # API route handlers (all mounted under /api)
 │   ├── ping.go                 # GET  /api/ping
 │   ├── ip.go                   # GET  /api/ip
+│   ├── avatar.go               # GET  /api/avatar/random
 │   ├── status.go               # GET  /api/status  (public, cached)
 │   ├── signup.go               # POST /api/signup
 │   ├── login.go                # POST /api/login
@@ -323,6 +324,7 @@ All API routes are prefixed with `/api`.
 | `GET` | `/api/ping` | None | Liveness probe. Returns `{"status":"ok"}` |
 | `GET` | `/api/ip` | None | Returns client IP address |
 | `GET` | `/api/status` | None | Live system status (30s cached, public-safe) |
+| `GET` | `/api/avatar/random` | None | Mint a random UUID and return an absolute avatar URL (see [Avatars](#avatars)) |
 
 **`GET /api/status` response:**
 ```json
@@ -463,6 +465,26 @@ The same eight UUIDs at `?size=32`, useful as a list-avatar check:
 ![32px row](https://vault.gliders.dev/avatar/16fd2706-8baf-433b-82eb-8c7fada847da?size=32)
 
 Swap the host for your own deployment; the paths are the same.
+
+### Random URL API
+
+`GET /api/avatar/random` mints a fresh UUID and returns a URL — it does not render or store anything. Fetch the returned `url` (or `/avatar/:uuid`) to get the PNG.
+
+```bash
+curl "https://vault.gliders.dev/api/avatar/random"
+curl "https://vault.gliders.dev/api/avatar/random?size=128"
+```
+
+```json
+{
+  "status": "ok",
+  "uuid": "550e8400-e29b-41d4-a716-446655440000",
+  "size": 256,
+  "url": "https://vault.gliders.dev/avatar/550e8400-e29b-41d4-a716-446655440000?size=256"
+}
+```
+
+Optional `?size=` uses the same rules as `/avatar/:uuid` (default `AVATAR_DEFAULT_SIZE`, clamped to 8–4096). The JSON response is `Cache-Control: no-store` so edges never pin one “random” body.
 
 ### Embedding
 

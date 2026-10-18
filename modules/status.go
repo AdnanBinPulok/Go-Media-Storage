@@ -129,6 +129,13 @@ func GetStatusData() map[string]any {
 				"path":        "/api/status",
 			},
 			{
+				"name":        "Random avatar",
+				"description": "Mint a random UUID and return a URL to /avatar/:uuid.",
+				"status":      "ok",
+				"method":      "GET",
+				"path":        "/api/avatar/random",
+			},
+			{
 				"name":        "Upload",
 				"description": "Upload media files to a vault.",
 				"status":      "ok",

@@ -225,6 +225,7 @@ Base path: **`/api`**. Unless noted, responses are JSON with `success` boolean.
 | `GET` | `/api/ping` | None | `{"status":"ok"}` |
 | `GET` | `/api/ip` | None | Client IP |
 | `GET` | `/api/status` | None | Public status (rate limited: 20 req / 10s) |
+| `GET` | `/api/avatar/random` | None | Random UUID + absolute `/avatar/:uuid` URL (`?size` optional; `Cache-Control: no-store`) |
 
 `GET /api/status` returns a **public-safe** subset (no goroutine count, env mode, storage totals, or file-type breakdown). Internal cache TTL ~5 seconds.
 
@@ -429,6 +430,7 @@ Dashboard pages use rate limiting: **50 requests / 5 seconds** per IP.
 | Path | Auth | Description |
 |------|------|-------------|
 | `/avatar/:uuid` | Public | Deterministic PNG avatar (`?size=8..4096`, default 256) |
+| `/api/avatar/random` | Public | JSON `{uuid,size,url}` — mints a UUID only; does not render or store |
 
 Only valid UUIDs are accepted (canonical, uppercase, 32-hex, braced, or `urn:uuid:`); all spellings normalize to one lowercase form and therefore one cache entry. Responses are cached in memory for `AVATAR_MEMORY_TTL_SECONDS` (default 1 hour, bounded by 10,000 items / 256 MiB, with concurrent misses for the same avatar coalesced into one render) and served with `Cache-Control: public, max-age={AVATAR_CACHE_TIME_SECONDS}, s-maxage=…, immutable` plus `CDN-Cache-Control` / `Cloudflare-CDN-Cache-Control`, a stable `ETag`, and `X-Avatar-Cache: HIT|MISS`. `X-Avatar-Generation-Time` reports the origin render time in microseconds and excludes any queueing behind the large-render gate.
 

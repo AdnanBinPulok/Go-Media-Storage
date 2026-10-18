@@ -91,8 +91,8 @@ func TestAvatarDefaultSizeFromEnv(t *testing.T) {
 	for _, tc := range cases {
 		settings.AvatarConfigInstance.DefaultSize = tc.env
 
-		if got := avatarDefaultSize(); got != tc.want {
-			t.Errorf("%s: avatarDefaultSize() = %d, want %d", tc.name, got, tc.want)
+		if got := AvatarDefaultSize(); got != tc.want {
+			t.Errorf("%s: AvatarDefaultSize() = %d, want %d", tc.name, got, tc.want)
 		}
 
 		// The route must use the same default when ?size is absent.
