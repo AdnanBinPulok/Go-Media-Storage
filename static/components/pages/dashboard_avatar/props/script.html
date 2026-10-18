@@ -1,0 +1,217 @@
+<script>
+    (function () {
+        const DEFAULT_SIZE = 256;
+        const MIN_SIZE = 8;
+        const MAX_SIZE = 4096;
+        const GALLERY_SIZE = 128;
+        const GALLERY_COUNT = 12;
+
+        const ui = {
+            uuid: document.getElementById('avatar-uuid'),
+            size: document.getElementById('avatar-size'),
+            image: document.getElementById('avatar-image'),
+            meta: document.getElementById('avatar-preview-meta'),
+            metaUUID: document.getElementById('avatar-meta-uuid'),
+            metaSize: document.getElementById('avatar-meta-size'),
+            requestURL: document.getElementById('avatar-request-url'),
+            urlHint: document.getElementById('avatar-url-hint'),
+            download: document.getElementById('avatar-download'),
+            gallery: document.getElementById('avatar-gallery'),
+            presets: document.getElementById('avatar-size-presets'),
+        };
+
+        // state is the source of truth for what the preview currently shows
+        const state = { uuid: '', size: DEFAULT_SIZE };
+
+        function randomUUID() {
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                return window.crypto.randomUUID();
+            }
+
+            // Fallback for browsers without crypto.randomUUID: build a v4 UUID.
+            const bytes = new Uint8Array(16);
+            if (window.crypto && window.crypto.getRandomValues) {
+                window.crypto.getRandomValues(bytes);
+            } else {
+                for (let i = 0; i < bytes.length; i++) {
+                    bytes[i] = Math.floor(Math.random() * 256);
+                }
+            }
+
+            bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+            bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xx
+
+            const hex = Array.from(bytes, function (b) {
+                return b.toString(16).padStart(2, '0');
+            }).join('');
+
+            return [
+                hex.slice(0, 8),
+                hex.slice(8, 12),
+                hex.slice(12, 16),
+                hex.slice(16, 20),
+                hex.slice(20),
+            ].join('-');
+        }
+
+        // Mirrors utils.NormalizeUUID on the server: accepts canonical, 32 hex,
+        // braced, and urn:uuid: forms. Returns a lowercase canonical UUID.
+        function normalizeUUID(raw) {
+            let s = String(raw || '').trim();
+            if (s.length >= 9 && s.slice(0, 9).toLowerCase() === 'urn:uuid:') {
+                s = s.slice(9);
+            }
+            if (s.startsWith('{')) s = s.slice(1);
+            if (s.endsWith('}')) s = s.slice(0, -1);
+
+            const hex = s.replace(/-/g, '').toLowerCase();
+            if (!/^[0-9a-f]{32}$/.test(hex)) {
+                return '';
+            }
+
+            return [
+                hex.slice(0, 8),
+                hex.slice(8, 12),
+                hex.slice(12, 16),
+                hex.slice(16, 20),
+                hex.slice(20),
+            ].join('-');
+        }
+
+        function parseSize(raw) {
+            const n = parseInt(raw, 10);
+            if (isNaN(n)) return 0;
+            if (n < MIN_SIZE) return MIN_SIZE;
+            if (n > MAX_SIZE) return MAX_SIZE;
+            return n;
+        }
+
+        function avatarURL(uuid, size) {
+            return '/avatar/' + encodeURIComponent(uuid) + '?size=' + size;
+        }
+
+        function refreshPreview() {
+            const url = avatarURL(state.uuid, state.size);
+
+            ui.image.src = url;
+            ui.image.width = state.size;
+            ui.image.height = state.size;
+            ui.meta.textContent = state.size + ' × ' + state.size + ' px';
+            ui.metaUUID.textContent = state.uuid;
+            ui.metaSize.textContent = state.size + ' px';
+            ui.requestURL.textContent = url;
+            ui.urlHint.textContent = url;
+            ui.download.href = url;
+            ui.download.setAttribute('download', state.uuid + '-' + state.size + '.png');
+        }
+
+        function setSize(size) {
+            state.size = size;
+            ui.size.value = size;
+            refreshPreview();
+        }
+
+        function handleAvatarGenerate(event) {
+            event.preventDefault();
+
+            const typed = ui.uuid.value.trim();
+            const uuid = typed === '' ? randomUUID() : normalizeUUID(typed);
+
+            if (!uuid) {
+                showNotification('That is not a valid UUID', 'error');
+                ui.uuid.focus();
+                return;
+            }
+
+            const requested = parseInt(ui.size.value, 10);
+            if (isNaN(requested)) {
+                showNotification('Size must be a number between ' + MIN_SIZE + ' and ' + MAX_SIZE, 'error');
+                ui.size.focus();
+                return;
+            }
+
+            const size = parseSize(requested);
+            if (size !== requested) {
+                showNotification('Size clamped to ' + size + ' px', 'warning');
+            }
+
+            state.uuid = uuid;
+            ui.uuid.value = uuid;
+            setSize(size);
+        }
+
+        function randomizeAvatarUUID() {
+            state.uuid = randomUUID();
+            ui.uuid.value = state.uuid;
+            refreshPreview();
+        }
+
+        function copyAvatarURL() {
+            const url = new URL(avatarURL(state.uuid, state.size), window.location.origin).toString();
+
+            navigator.clipboard.writeText(url).then(function () {
+                showNotification('URL copied to clipboard', 'success');
+            }).catch(function () {
+                showNotification('Failed to copy URL', 'error');
+            });
+        }
+
+        function makeTile(uuid) {
+            const tile = document.createElement('button');
+            tile.type = 'button';
+            tile.className = 'avatar-checker group relative overflow-hidden rounded-lg border border-white/10 p-1 transition-all hover:border-highlight/40';
+            tile.title = uuid;
+
+            const img = document.createElement('img');
+            img.src = avatarURL(uuid, GALLERY_SIZE);
+            img.alt = uuid;
+            img.width = GALLERY_SIZE;
+            img.height = GALLERY_SIZE;
+            img.loading = 'lazy';
+            img.className = 'h-auto w-full rounded';
+
+            tile.appendChild(img);
+            tile.addEventListener('click', function () {
+                state.uuid = uuid;
+                ui.uuid.value = uuid;
+                refreshPreview();
+                showNotification('Loaded ' + uuid.slice(0, 8) + '…', 'info');
+            });
+
+            return tile;
+        }
+
+        function shuffleAvatarGallery() {
+            if (!ui.gallery) return;
+
+            ui.gallery.replaceChildren();
+            for (let i = 0; i < GALLERY_COUNT; i++) {
+                ui.gallery.appendChild(makeTile(randomUUID()));
+            }
+        }
+
+        function init() {
+            if (ui.presets) {
+                ui.presets.addEventListener('click', function (event) {
+                    const chip = event.target.closest('[data-size]');
+                    if (!chip) return;
+                    setSize(parseSize(chip.dataset.size));
+                });
+            }
+
+            // A fresh UUID on load means the page is never empty, and the
+            // "Generate" button shows the default size immediately.
+            state.uuid = randomUUID();
+            ui.uuid.value = state.uuid;
+            setSize(DEFAULT_SIZE);
+            shuffleAvatarGallery();
+        }
+
+        window.handleAvatarGenerate = handleAvatarGenerate;
+        window.randomizeAvatarUUID = randomizeAvatarUUID;
+        window.copyAvatarURL = copyAvatarURL;
+        window.shuffleAvatarGallery = shuffleAvatarGallery;
+
+        init();
+    })();
+</script>

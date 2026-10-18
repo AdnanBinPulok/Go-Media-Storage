@@ -10,6 +10,11 @@ import (
 type RateLimitConfig struct {
 	Requests int
 	Window   time.Duration
+
+	// Scope separates counters per limiter. Without it every limiter in the app
+	// shares one counter keyed by IP, so a dashboard page view would count
+	// against the avatar route.
+	Scope string
 }
 
 type visitor struct {
@@ -23,6 +28,9 @@ func RateLimiter(cfg RateLimitConfig) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 
 		ip := c.IP()
+		if cfg.Scope != "" {
+			ip = cfg.Scope + "|" + ip
+		}
 		now := time.Now()
 
 		vAny, _ := visitors.LoadOrStore(ip, &visitor{

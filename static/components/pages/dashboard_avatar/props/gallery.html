@@ -1,0 +1,20 @@
+<section class="flex flex-col overflow-hidden rounded-lg border border-white/10 bg-secondary/10">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-secondary/30 px-4 py-3">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-images text-sm font-semibold text-primary/80"></i>
+            <h3 class="text-sm font-semibold text-text-secondary md:text-base">Random Variants</h3>
+        </div>
+        <button type="button" onclick="shuffleAvatarGallery()"
+            class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:bg-secondary hover:text-text-secondary">
+            <i class="fas fa-random text-xs"></i> Shuffle
+        </button>
+    </div>
+
+    <div id="avatar-gallery" class="grid grid-cols-3 gap-3 p-4 sm:grid-cols-4 md:grid-cols-6">
+        <!-- tiles injected by shuffleAvatarGallery() -->
+    </div>
+
+    <p class="border-t border-white/10 px-4 py-3 text-xs text-muted">
+        Click a tile to load its UUID into the preview. Tiles render at 128px to keep the grid light.
+    </p>
+</section>
