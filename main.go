@@ -24,6 +24,7 @@ func RegisterPages(app *fiber.App) {
 		pages.ThemePage,
 		pages.StatusPage,
 		pages.LoginPage,
+		pages.AvatarPage,
 		pages.SignupPage,
 		pages.DashboardPage,
 		pages.FilePage,

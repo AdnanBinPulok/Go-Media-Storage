@@ -2,8 +2,6 @@ module go-media-storage
 
 go 1.25.1
 
-toolchain go1.25.1
-
 require (
 	github.com/AdnanBinPulok/pggo v0.0.9
 	github.com/chai2010/webp v1.4.0
