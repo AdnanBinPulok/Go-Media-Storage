@@ -29,6 +29,11 @@ type CachingConfig struct {
 	// Avatars are deterministic per (uuid, size), so this can be much longer
 	// than the file cache times.
 	AvatarCacheTime int
+
+	// AvatarMemoryTTL is how long a rendered avatar stays in the in-process
+	// cache. Content never changes, so this only trades memory for redraws;
+	// the LRU size cap is what actually bounds memory.
+	AvatarMemoryTTL int
 }
 
 // AvatarConfig holds defaults for the generated avatar route.
@@ -75,6 +80,7 @@ func LoadEnv() AppInfo {
 			BrowserCacheTime: getEnvInt("BROWSER_CACHE_TIME_SECONDS", 30),   // Default 30 seconds for quick purging during development, can be increased in production
 			ProxyCacheTime:   getEnvInt("PROXY_CACHE_TIME_SECONDS", 60),     // Default 60 seconds for faster purging when needed, can be increased in production
 			AvatarCacheTime:  getEnvInt("AVATAR_CACHE_TIME_SECONDS", 86400), // Default 1 day: avatars never change for a given uuid + size
+			AvatarMemoryTTL:  getEnvInt("AVATAR_MEMORY_TTL_SECONDS", 3600),  // In-process cache: 1 hour, still bounded by the LRU caps
 		}
 		AvatarConfigInstance = AvatarConfig{
 			DefaultSize: getEnvInt("AVATAR_DEFAULT_SIZE", 256), // Used when /avatar/:uuid omits ?size

@@ -252,25 +252,6 @@ func TestSpecInvariants(t *testing.T) {
 	}
 }
 
-func BenchmarkGeneratePNG256(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		id := testIDs[i%len(testIDs)]
-		if _, err := GeneratePNG(id, 256, DefaultPaddingPct); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkGeneratePNG512(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		if _, err := GeneratePNG(testIDs[0], 512, DefaultPaddingPct); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 func mustPNG(t *testing.T, id string, size int, padding float64) []byte {
 	t.Helper()
 	data, err := GeneratePNG(id, size, padding)

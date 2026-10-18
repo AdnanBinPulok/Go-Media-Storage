@@ -32,13 +32,19 @@ Cache hits cost **~235 ns**. Both are measured, not estimated — see section 10
 avatar_generator/
 ├── doc.go            package documentation
 ├── spec.go           seeds, spec, variants, weights, faceInfo, clamps
-├── shape.go          shape math, LUT, analytic AA, blending
+├── shape.go          shape math, LUT, analytic AA, blending, parallel rows
 ├── eyes.go           6 eye styles
 ├── color.go          HSL + contrast
-├── generator.go      GeneratePNG, renderImage, drawFace, encodePNG, ETag
-├── cache.go          TTL + LRU cache
-├── generator_test.go determinism, padding, variants, ETag, benchmarks
+├── generator.go      GeneratePNG, canvas pool, drawAvatar, drawFace, ETag
+├── pngfast.go        fixed-filter PNG writer (zlib level 1)
+├── parallel.go       row-band fan-out for the drawing and filter passes
+├── cache.go          TTL + LRU cache with singleflight
+├── golden_test.go    decoded-pixel digests, env-gated update
+├── bench_test.go     GeneratePNG 256..2048, draw-only, encode-only
+├── encode_bench_test.go  filter pass and deflate levels
+├── generator_test.go determinism, padding, variants, ETag
 ├── cache_test.go     hit/miss, TTL, LRU, byte cap, concurrency
+├── flight_test.go    leader election, coalesced bursts, error cleanup
 └── preview_test.go   contact sheet, env-gated
 ```
 
@@ -706,60 +712,85 @@ to 2.5% extra size variety, so measured padding is `requested + 0..2.5%`.
 
 ### Encoding
 
+`pngfast.go` writes the PNG directly instead of going through `image/png`.
+
+`image/png` tries all five filter types on every row and then deflates whichever
+wins; at 1024 px that costs more than drawing the avatar. Avatars are flat,
+smooth shapes over a transparent background, so a fixed **Up** filter compresses
+well without any per-row trial, and `klauspost/compress/zlib` at level 1
+deflates faster than `compress/flate`.
+
+The premultiplied → straight-alpha conversion copies `image/png`'s own shortcut
+byte for byte (including its rounding), so switching writers cannot change a
+pixel. `TestPixelGolden` locks a SHA-256 of the decoded pixels for a fixed
+id/size matrix and would fail on any drift.
+
 ```go
-enc := png.Encoder{CompressionLevel: png.BestSpeed}
+const m = 0x101 * 0xffff // 8-bit -> 16-bit, then divide out alpha
+dst[0] = uint8(uint32(src[0]) * m / (uint32(a) * 0x101) >> 8)
 ```
 
-`BestCompression` costs ~15 ms more per avatar and saves a few KB. Since the
-result is cached and sent as `image/png`, speed wins. Flip to
-`png.DefaultCompression` if bandwidth matters more than latency.
+Encoding is split into two parallel stages:
+
+1. `filterRows`: premultiply-convert + Up-filter, one goroutine per row band.
+2. `compress`: a single zlib stream over the filtered scanlines.
+
+The tradeoff is payload size: a 1024 px avatar is ~46 KB instead of ~31 KB with
+the stdlib's adaptive filter choice, because a single fixed filter cannot be
+optimal on every row. That is a one-time cost per cache entry, paid to halve
+cold-render latency.
 
 ---
 
 ## 10. Measured results
 
-From the package benchmarks, AMD/Intel desktop, single goroutine:
+From the package benchmarks, Intel i5-10400 (6 cores / 12 threads), Windows:
 
 ```
-BenchmarkGeneratePNG256-12     4.76 ms/op    1.14 MB/op    32 allocs/op
-BenchmarkGeneratePNG512-12    13.93 ms/op    1.94 MB/op    34 allocs/op
-BenchmarkCacheHit-12          235 ns/op
+BenchmarkGeneratePNG256-12     2.2 ms/op    0.3 MB/op    75 allocs/op
+BenchmarkGeneratePNG512-12     3.7 ms/op    0.5 MB/op    84 allocs/op
+BenchmarkGeneratePNG1024-12   10.0 ms/op    0.4 MB/op    90 allocs/op
+BenchmarkGeneratePNG2048-12   31.9 ms/op    1.6 MB/op   125 allocs/op
+BenchmarkDrawOnly1024-12       4.0 ms/op
+BenchmarkEncodeOnly1024-12     6.8 ms/op
+BenchmarkFilterRows1024-12     1.1 ms/op
+BenchmarkCacheHit-12          213 ns/op
 ```
 
-256 px, more precisely:
+The same code before this optimization pass:
 
 ```
-256px avg: 4.76ms
-deterministic: true
-  32px  min padding 6.25%
-  48px  min padding 6.25%
-  64px  min padding 6.25%
- 128px  min padding 5.47%
- 256px  min padding 5.08%
- 512px  min padding 5.08%
-min padding: 5.08% (target >= 5.00%)   clipped: 0
+BenchmarkGeneratePNG256-12     5.0 ms/op   1.13 MB/op
+BenchmarkGeneratePNG512-12    14.4 ms/op   1.94 MB/op
+BenchmarkGeneratePNG1024-12   55.0 ms/op   5.20 MB/op   (draw 25 / encode 33)
+BenchmarkDrawOnly1024-12      25.0 ms/op
+BenchmarkEncodeOnly1024-12    33.0 ms/op
 ```
 
-512 px is ~4× the pixels and therefore ~4× the time; it stays one-time cost per
-cache entry. The 256 px budget is the one to hold under 10 ms.
+That is roughly 5.5× at the 1024 px size and 4.5× at 2048 px. Note that most of
+the win is wall-clock parallelism, so a 2-vCPU host lands closer to 3-4×.
+Cost still scales with area, so the maximum is the outlier: a 4096 px avatar
+allocates a 64 MiB canvas plus 67 MB of scanlines and takes a few hundred
+milliseconds of CPU. That is why `pages/avatar.go` throttles renders above
+1024 px through a two-slot gate instead of letting them run unbounded.
 
-Cost scales with area, so the maximum is the outlier: a 4096 px avatar is 256×
-the pixels of 256 px, which lands around a second of CPU and a 64 MiB transient
-buffer. That is why `pages/avatar.go` throttles renders above 1024 px through a
-two-slot gate instead of letting them run unbounded.
+Where the time went, and what each step replaced:
 
-Where the 4.8 ms went, and what each step replaced:
-
-| Step | Before | After |
+| Step | Original | Now |
 |---|---|---|
 | shape sampling | `Atan2` + `Pow` + `Sin` per pixel | LUT + atan table + `Sqrt` |
 | antialiasing | 4× canvas + CatmullRom downscale | analytic coverage, one pass |
-| pixel writes | `SetRGBA` (interface + bounds check) | direct `img.Pix` indexing |
-| PNG encode | `BestCompression` (~15 ms) | `BestSpeed` (~2 ms) |
-| **total** | **~400 ms** | **~4.8 ms** |
+| interior pixels | full edge lookup per pixel | solid fast path (squared-distance bound) |
+| exterior pixels | full edge lookup, then reject | squared-distance reject before `Sqrt` |
+| drawing | one goroutine | row bands, up to 8 goroutines |
+| PNG encode | 5 filters/row + `BestSpeed` | fixed Up filter + zlib level 1 |
+| RGBA buffer | allocated per render | pooled, cleared, recycled |
+| **total (1024)** | **~55 ms** | **~10 ms** |
+
 
 Progress along the way: 400 ms (naive per-pixel trig) → 75 ms (LUT + 4× downscale
-+ BestCompression) → 4.8 ms (analytic coverage).
++ BestCompression) → 4.8 ms (analytic coverage) → 2.2 ms at 256 px / 10 ms at
+1024 px (parallel bands + fixed-filter PNG).
 
 ---
 
@@ -780,7 +811,10 @@ build instead of needing a visual check:
 | id limits | `TestIDTooLong` | `ErrIDTooLong` above 256 bytes |
 | ETag | `TestETag` | stable, quoted, varies with all three inputs |
 | cache | `cache_test.go` | hit/miss, TTL, LRU, byte cap, concurrency |
-| avg time | `BenchmarkGeneratePNG256` | under 10 ms at 256 px |
+| coalescing | `flight_test.go` | one leader per key, result shared, key released on error |
+| pixels unchanged | `TestPixelGolden` | SHA-256 of decoded pixels per id/size |
+| avg time | `BenchmarkGeneratePNG256` | under 3 ms at 256 px |
+| avg time | `BenchmarkGeneratePNG1024` | under 15 ms at 1024 px |
 
 ```go
 // inkBounds decodes the PNG and finds the ink bbox, ignoring alpha <= 16 so
@@ -877,7 +911,11 @@ type CacheConfig struct {
 func DefaultCacheConfig() CacheConfig // 5 min, 10 000 items, 256 MiB
 ```
 
-Three decisions worth calling out:
+The route overrides the TTL from `AVATAR_MEMORY_TTL_SECONDS` (default 1 hour).
+Avatars never change, so the TTL only trades memory for redraws; the LRU caps
+are what bound memory.
+
+Four decisions worth calling out:
 
 **The key is every input that changes pixels.**
 
@@ -892,21 +930,26 @@ Padding is stored at fixed precision *after* clamping, so `0.05`, `0.0500001`
 and `1.0` (clamped to `0.45`) collapse onto the correct entry instead of
 creating near-duplicates.
 
-**Generation happens outside the lock.**
+**Generation happens outside the lock, once per key.**
 
 ```go
 if png, ok := c.get(key); ok {
 	return png, true, nil
 }
+if f, leader := c.beginFlight(key); !leader {
+	<-f.done
+	return f.png, false, f.err
+}
 png, err := renderPNG(specFromID(id), size, paddingPct) // no lock held
 c.put(key, png)
+c.endFlight(key, png, err)
 ```
 
-Holding a mutex for 5 ms would serialize the whole server behind one avatar.
-The cost is that two simultaneous misses for the same key both draw; they
-produce identical bytes and `put` keeps the first one, so the waste is bounded
-and rare. Introducing `singleflight` would remove it, but 5 ms of duplicated CPU
-is cheaper than another dependency.
+Holding a mutex while drawing would serialize the whole server behind one
+avatar. Instead a small in-package singleflight coalesces concurrent misses for
+the same key: the leader renders, waiters block on a channel, and the result is
+in the cache before the channel closes. A failed render still releases the key.
+
 
 **Both limits are enforced.** `evict` walks from the LRU tail until the item
 count *and* byte total fit:
@@ -965,9 +1008,20 @@ func AvatarPage(router fiber.Router) {
 			size = clampAvatarSize(parsed)
 		}
 
-		png, hit, err := avatarPNG(id, size)
+		// Oversized renders are gated. Queue time is not generation time, so it
+		// is spent outside the measurement below.
+		if size > heavySize {
+			if !acquireHeavySlot() {
+				return fiber.NewError(fiber.StatusServiceUnavailable, "Too many large avatar requests")
+			}
+			defer releaseHeavySlot()
+		}
+
+		genStart := time.Now()
+		png, hit, err := avatarStore().PNG(id, size, avatar_generator.DefaultPaddingPct)
+		genTime := time.Since(genStart)
 		if err != nil {
-			return err
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate avatar")
 		}
 
 		setAvatarCacheHeaders(c, id, size) // Cache-Control, CDN headers, ETag
@@ -984,9 +1038,9 @@ func AvatarPage(router fiber.Router) {
 		} else {
 			c.Set("X-Avatar-Cache", "MISS")
 		}
-		// Debug only: cache hits report ~0ms. Cloudflare caches this header too,
-		// so an edge hit still shows the origin's value.
-		c.Set("X-Avatar-Generation-Time", fmt.Sprintf("%dms", genTime.Milliseconds()))
+		// Debug only: cache hits report a few microseconds. Cloudflare caches
+		// this header too, so an edge hit still shows the origin's value.
+		c.Set("X-Avatar-Generation-Time", fmt.Sprintf("%dus", genTime.Microseconds()))
 
 		return c.Send(png)
 	})

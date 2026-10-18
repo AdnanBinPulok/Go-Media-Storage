@@ -32,6 +32,8 @@ type shapeForm struct {
 	rad       []float64 // radius per angle over [0,2pi), bbox-fitted
 	ox, oy    float64   // bbox center, in fitted units
 	invAspect float64
+	minRad    float64 // smallest fitted radius: below this, every pixel is solid
+	maxRad    float64 // largest fitted radius: beyond this, every pixel is empty
 }
 
 // formPool recycles the 32KB radius table. Draw calls are short and frequent,
@@ -100,16 +102,28 @@ func (s avatarSpec) form() *shapeForm {
 		rad[i] *= inv
 	}
 
+	// Radii after the fit: every edge sample lives in [minRad, maxRad], and so
+	// does any linear interpolation between two samples. The draw loop uses
+	// these bounds to skip the shape lookup entirely where coverage is known.
+	f.minRad, f.maxRad = rad[0], rad[0]
+	for _, r := range rad[1:] {
+		f.minRad = math.Min(f.minRad, r)
+		f.maxRad = math.Max(f.maxRad, r)
+	}
+
 	f.ox = (minX + maxX) / 2 * inv
 	f.oy = (minY + maxY) / 2 * inv
 	f.invAspect = 1 / s.AspectY
 	return f
 }
 
-// edgeRadius interpolates the fitted radius at direction (x,y).
+// edgeRadiusIn interpolates the fitted radius at direction (x,y).
 // math.Atan2 is replaced by an octant-aware table lookup, which was the single
 // most expensive call in the original per-pixel loop.
-func (f *shapeForm) edgeRadius(x, y float64) float64 {
+//
+// It takes the table directly rather than the shapeForm so the row loops can
+// alias rad, ox and oy and stay in registers.
+func edgeRadiusIn(rad []float64, x, y float64) float64 {
 	ax, ay := math.Abs(x), math.Abs(y)
 
 	var a float64
@@ -137,13 +151,22 @@ func (f *shapeForm) edgeRadius(x, y float64) float64 {
 	i &= lutSize - 1
 	j := (i + 1) & (lutSize - 1)
 
-	return f.rad[i] + (f.rad[j]-f.rad[i])*frac
+	return rad[i] + (rad[j]-rad[i])*frac
 }
+
+// rejectEpsilon keeps the solid/empty fast-path comparisons on the safe side of
+// a floating-point rounding flip. In fitted units it is far smaller than a
+// pixel (1e-6 * a 4096px radius is 0.004px), so it never widens the drawn shape.
+const rejectEpsilon = 1e-6
 
 // drawShape fills the fitted shape into a square of half-size radius centered
 // at (cx, cy). Coverage is analytic: the distance to the edge becomes the
 // alpha directly, so the boundary is antialiased in one pass with no
 // supersampling and no downscale step.
+//
+// Rows are split across goroutines, and pixels well inside or well outside the
+// shape skip the per-pixel lookup entirely. Both are exact: the interior is
+// fully opaque and the exterior fully transparent under the same formula.
 func drawShape(img *image.RGBA, f *shapeForm, cx, cy, radius, aspectY float64, clip image.Rectangle, col color.RGBA) {
 	if radius <= 0 {
 		return
@@ -161,43 +184,70 @@ func drawShape(img *image.RGBA, f *shapeForm, cx, cy, radius, aspectY float64, c
 	x1 := min(clip.Max.X, int(cx+radius)+1)
 	y0 := max(clip.Min.Y, int(cy-radius*aspectY)-1)
 	y1 := min(clip.Max.Y, int(cy+radius*aspectY)+1)
-
-	for y := y0; y < y1; y++ {
-		// canvas -> fitted shape space
-		yf := (float64(y)+0.5-cy)*invRy + f.oy
-		row := img.Pix[y*img.Stride:]
-
-		for x := x0; x < x1; x++ {
-			xf := (float64(x)+0.5-cx)*invR + f.ox
-
-			d := math.Sqrt(xf*xf + yf*yf)
-			a := 0.5 + (f.edgeRadius(xf, yf)-d)*radius
-			if a <= 0 {
-				continue
-			}
-			blendPX(row, x, col, a)
-		}
+	if x1 <= x0 || y1 <= y0 {
+		return
 	}
+
+	// a = 0.5 + (edge - d) * radius, with edge bounded by [minRad, maxRad]:
+	//   d <= minRad - 0.5/radius  =>  a >= 1  (solid)
+	//   d >= maxRad + 0.5/radius  =>  a <= 0  (empty)
+	inner := f.minRad - 0.5*invR - rejectEpsilon
+	hasInterior := inner > 0
+	inner2 := inner * inner
+
+	outer := f.maxRad + 0.5*invR + rejectEpsilon
+	outer2 := outer * outer
+
+	rad, ox, oy := f.rad, f.ox, f.oy
+	xBase := 0.5 - cx
+
+	parallelBands(y0, y1, func(lo, hi int) {
+		for y := lo; y < hi; y++ {
+			yf := (float64(y)+0.5-cy)*invRy + oy
+			row := img.Pix[y*img.Stride:]
+
+			for x := x0; x < x1; x++ {
+				xf := (float64(x)+xBase)*invR + ox
+				d2 := xf*xf + yf*yf
+
+				if hasInterior && d2 <= inner2 {
+					i := x * 4
+					row[i+0], row[i+1], row[i+2], row[i+3] = col.R, col.G, col.B, 255
+					continue
+				}
+				if d2 > outer2 {
+					continue
+				}
+
+				a := 0.5 + (edgeRadiusIn(rad, xf, yf)-math.Sqrt(d2))*radius
+				if a > 0 {
+					blendPX(row, x, col, a)
+				}
+			}
+		}
+	})
 }
 
 // fillRectAA fills an axis-aligned rectangle with correct edge coverage.
 func fillRectAA(img *image.RGBA, x0, y0, x1, y1 float64, col color.RGBA) {
 	r := image.Rect(int(x0)-1, int(y0)-1, int(x1)+2, int(y1)+2).Intersect(img.Bounds())
 
-	for y := r.Min.Y; y < r.Max.Y; y++ {
-		cy := axisCoverage(float64(y)+0.5, y0, y1)
-		if cy <= 0 {
-			continue
-		}
-		row := img.Pix[y*img.Stride:]
-		for x := r.Min.X; x < r.Max.X; x++ {
-			cx := axisCoverage(float64(x)+0.5, x0, x1)
-			if cx <= 0 {
+	parallelBands(r.Min.Y, r.Max.Y, func(lo, hi int) {
+		for y := lo; y < hi; y++ {
+			cy := axisCoverage(float64(y)+0.5, y0, y1)
+			if cy <= 0 {
 				continue
 			}
-			blendPX(row, x, col, cx*cy)
+			row := img.Pix[y*img.Stride:]
+			for x := r.Min.X; x < r.Max.X; x++ {
+				cx := axisCoverage(float64(x)+0.5, x0, x1)
+				if cx <= 0 {
+					continue
+				}
+				blendPX(row, x, col, cx*cy)
+			}
 		}
-	}
+	})
 }
 
 // axisCoverage is the fraction of a pixel covered by [lo, hi] along one axis.
@@ -243,16 +293,18 @@ func fillSDF(img *image.RGBA, sx0, sy0, sx1, sy1 float64, col color.RGBA, sdf fu
 	cx := (sx0 + sx1) / 2
 	cy := (sy0 + sy1) / 2
 
-	for y := r.Min.Y; y < r.Max.Y; y++ {
-		dy := float64(y) + 0.5 - cy
-		row := img.Pix[y*img.Stride:]
+	parallelBands(r.Min.Y, r.Max.Y, func(lo, hi int) {
+		for y := lo; y < hi; y++ {
+			dy := float64(y) + 0.5 - cy
+			row := img.Pix[y*img.Stride:]
 
-		for x := r.Min.X; x < r.Max.X; x++ {
-			a := 0.5 - sdf(float64(x)+0.5-cx, dy)
-			if a <= 0 {
-				continue
+			for x := r.Min.X; x < r.Max.X; x++ {
+				a := 0.5 - sdf(float64(x)+0.5-cx, dy)
+				if a <= 0 {
+					continue
+				}
+				blendPX(row, x, col, a)
 			}
-			blendPX(row, x, col, a)
 		}
-	}
+	})
 }

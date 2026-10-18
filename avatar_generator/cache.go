@@ -62,6 +62,12 @@ type Cache struct {
 	items map[string]*list.Element
 	order *list.List // front = most recently used, back = next eviction
 
+	// flights coalesces concurrent misses for the same key. Without it a burst
+	// of identical requests (a gallery or an avatar wall) draws the same avatar
+	// once per request.
+	flightsMu sync.Mutex
+	flights   map[string]*flight
+
 	ttl      time.Duration
 	maxItems int
 	maxBytes int64
@@ -70,6 +76,14 @@ type Cache struct {
 	hits      uint64
 	misses    uint64
 	evictions uint64
+}
+
+// flight is one in-progress render. Waiters block on done and then read png/err,
+// which the leader writes before closing the channel.
+type flight struct {
+	done chan struct{}
+	png  []byte
+	err  error
 }
 
 // NewCache builds a cache. Non-positive limits fall back to
@@ -90,6 +104,7 @@ func NewCache(cfg CacheConfig) *Cache {
 	return &Cache{
 		items:    make(map[string]*list.Element, 256),
 		order:    list.New(),
+		flights:  make(map[string]*flight),
 		ttl:      cfg.TTL,
 		maxItems: cfg.MaxItems,
 		maxBytes: cfg.MaxBytes,
@@ -108,22 +123,68 @@ func (c *Cache) PNG(id string, size int, paddingPct float64) ([]byte, bool, erro
 
 	size = clampSize(size)
 	paddingPct = clampPadding(paddingPct)
-	key := cacheKey(id, size, paddingPct)
 
+	if c == nil {
+		png, err := renderPNG(specFromID(id), size, paddingPct)
+		return png, false, err
+	}
+
+	key := cacheKey(id, size, paddingPct)
 	if png, ok := c.get(key); ok {
 		return png, true, nil
 	}
 
-	// Generate outside the lock: drawing must never serialize the whole server
-	// behind one avatar. Two concurrent misses for the same key both draw and
-	// write the same bytes, which is harmless.
-	png, err := renderPNG(specFromID(id), size, paddingPct)
-	if err != nil {
-		return nil, false, err
+	// One render per key, not one per request. A waiting caller gets the same
+	// bytes the leader stored, so the pixel result is identical either way.
+	if f, leader := c.beginFlight(key); !leader {
+		<-f.done
+		return f.png, false, f.err
 	}
 
-	c.put(key, png)
-	return png, false, nil
+	// Generate outside the locks: drawing must never serialize the server.
+	png, err := renderPNG(specFromID(id), size, paddingPct)
+	if err == nil {
+		c.put(key, png)
+	}
+	c.endFlight(key, png, err)
+
+	return png, false, err
+}
+
+// beginFlight registers interest in key. The second return value reports
+// whether the caller is the one responsible for generating.
+func (c *Cache) beginFlight(key string) (*flight, bool) {
+	c.flightsMu.Lock()
+	defer c.flightsMu.Unlock()
+
+	if f, ok := c.flights[key]; ok {
+		return f, false
+	}
+
+	f := &flight{done: make(chan struct{})}
+	if c.flights == nil {
+		c.flights = make(map[string]*flight)
+	}
+	c.flights[key] = f
+	return f, true
+}
+
+// endFlight hands the result to every waiter and releases the key.
+func (c *Cache) endFlight(key string, png []byte, err error) {
+	c.flightsMu.Lock()
+	f := c.flights[key]
+	delete(c.flights, key)
+	c.flightsMu.Unlock()
+
+	if f == nil {
+		return
+	}
+
+	// Written before close: every waiter reads them after <-f.done, which the
+	// channel close orders after these stores.
+	f.png = png
+	f.err = err
+	close(f.done)
 }
 
 // get moves a live entry to the front and reports a hit. Expired entries are

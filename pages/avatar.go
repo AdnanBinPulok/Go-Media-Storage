@@ -39,13 +39,22 @@ func AvatarPage(router fiber.Router) {
 			size = clampAvatarSize(parsed)
 		}
 
+		// Oversized renders are gated. Queue time is not generation time, so it
+		// is spent outside the measurement below.
+		if size > heavySize {
+			if !acquireHeavySlot() {
+				return fiber.NewError(fiber.StatusServiceUnavailable, "Too many large avatar requests")
+			}
+			defer releaseHeavySlot()
+		}
+
 		genStart := time.Now()
 
-		png, hit, err := avatarPNG(id, size)
-		if err != nil {
-			return err
-		}
+		png, hit, err := avatarStore().PNG(id, size, avatar_generator.DefaultPaddingPct)
 		genTime := time.Since(genStart)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "Failed to generate avatar")
+		}
 
 		setAvatarCacheHeaders(c, id, size)
 
@@ -64,26 +73,10 @@ func AvatarPage(router fiber.Router) {
 		c.Set(fiber.HeaderContentType, "image/png")
 		c.Set("X-Content-Type-Options", "nosniff")
 
-		c.Set("X-Avatar-Generation-Time", fmt.Sprintf("%dms", genTime.Milliseconds()))
+		c.Set("X-Avatar-Generation-Time", fmt.Sprintf("%dus", genTime.Microseconds()))
 
 		return c.Send(png)
 	})
-}
-
-// avatarPNG reads from the cache, guarding oversized renders.
-func avatarPNG(id string, size int) ([]byte, bool, error) {
-	if size > heavySize {
-		if !acquireHeavySlot() {
-			return nil, false, fiber.NewError(fiber.StatusServiceUnavailable, "Too many large avatar requests")
-		}
-		defer releaseHeavySlot()
-	}
-
-	png, hit, err := avatarStore().PNG(id, size, avatar_generator.DefaultPaddingPct)
-	if err != nil {
-		return nil, false, fiber.NewError(fiber.StatusInternalServerError, "Failed to generate avatar")
-	}
-	return png, hit, nil
 }
 
 // setAvatarCacheHeaders marks the response as public and long-lived.
