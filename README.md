@@ -442,6 +442,28 @@ https://vault.gliders.dev/avatar/550e8400-e29b-41d4-a716-446655440000?size=512
 | `uuid` (path) | required | Any UUID spelling: canonical, uppercase, 32-hex, braced (`{...}`), or `urn:uuid:`. All forms normalize to one lowercase canonical UUID, so every spelling maps to the same avatar and the same cache entry |
 | `size` (query) | `AVATAR_DEFAULT_SIZE` (`256`) | Square edge length in px, clamped to `8`–`4096`. Omit it to get the configured default |
 
+### Examples
+
+Eight UUIDs, all at `?size=128`:
+
+| | | | |
+|:--:|:--:|:--:|:--:|
+| ![550e8400-e29b-41d4-a716-446655440000](https://vault.gliders.dev/avatar/550e8400-e29b-41d4-a716-446655440000?size=128) | ![6ba7b810-9dad-11d1-80b4-00c04fd430c8](https://vault.gliders.dev/avatar/6ba7b810-9dad-11d1-80b4-00c04fd430c8?size=128) | ![9f1c2e3d-4a5b-6c7d-8e9f-0a1b2c3d4e5f](https://vault.gliders.dev/avatar/9f1c2e3d-4a5b-6c7d-8e9f-0a1b2c3d4e5f?size=128) | ![1b4e28ba-2fa1-11d2-883f-0016d3cca427](https://vault.gliders.dev/avatar/1b4e28ba-2fa1-11d2-883f-0016d3cca427?size=128) |
+| ![f47ac10b-58cc-4372-a567-0e02b2c3d479](https://vault.gliders.dev/avatar/f47ac10b-58cc-4372-a567-0e02b2c3d479?size=128) | ![3f2504e0-4f89-11d3-9a0c-0305e82c3301](https://vault.gliders.dev/avatar/3f2504e0-4f89-11d3-9a0c-0305e82c3301?size=128) | ![a8098c1a-f86e-11da-bd1a-00112444be1e](https://vault.gliders.dev/avatar/a8098c1a-f86e-11da-bd1a-00112444be1e?size=128) | ![16fd2706-8baf-433b-82eb-8c7fada847da](https://vault.gliders.dev/avatar/16fd2706-8baf-433b-82eb-8c7fada847da?size=128) |
+
+The same eight UUIDs at `?size=32`, useful as a list-avatar check:
+
+![32px row](https://vault.gliders.dev/avatar/550e8400-e29b-41d4-a716-446655440000?size=32)
+![32px row](https://vault.gliders.dev/avatar/6ba7b810-9dad-11d1-80b4-00c04fd430c8?size=32)
+![32px row](https://vault.gliders.dev/avatar/9f1c2e3d-4a5b-6c7d-8e9f-0a1b2c3d4e5f?size=32)
+![32px row](https://vault.gliders.dev/avatar/1b4e28ba-2fa1-11d2-883f-0016d3cca427?size=32)
+![32px row](https://vault.gliders.dev/avatar/f47ac10b-58cc-4372-a567-0e02b2c3d479?size=32)
+![32px row](https://vault.gliders.dev/avatar/3f2504e0-4f89-11d3-9a0c-0305e82c3301?size=32)
+![32px row](https://vault.gliders.dev/avatar/a8098c1a-f86e-11da-bd1a-00112444be1e?size=32)
+![32px row](https://vault.gliders.dev/avatar/16fd2706-8baf-433b-82eb-8c7fada847da?size=32)
+
+Swap the host for your own deployment; the paths are the same.
+
 ### Embedding
 
 ```html
