@@ -17,6 +17,7 @@ var (
 	DatabaseConfigInstance    DatabaseConfig
 	CachingConfigInstance     CachingConfig
 	FileStorageConfigInstance FileStorageConfig
+	AvatarConfigInstance      AvatarConfig
 	loadOnce                  sync.Once
 )
 
@@ -28,6 +29,13 @@ type CachingConfig struct {
 	// Avatars are deterministic per (uuid, size), so this can be much longer
 	// than the file cache times.
 	AvatarCacheTime int
+}
+
+// AvatarConfig holds defaults for the generated avatar route.
+type AvatarConfig struct {
+	// DefaultSize is the edge length used when a request omits ?size.
+	// AVATAR_DEFAULT_SIZE. Clamped to the generator's 8..4096 range on use.
+	DefaultSize int
 }
 
 type AppInfo struct {
@@ -64,9 +72,12 @@ func LoadEnv() AppInfo {
 			BASE_URL:  getEnv("BASE_URL", "http://localhost:8432"),
 		}
 		CachingConfigInstance = CachingConfig{
-			BrowserCacheTime: getEnvInt("BROWSER_CACHE_TIME_SECONDS", 30), // Default 30 seconds for quick purging during development, can be increased in production
-			ProxyCacheTime:   getEnvInt("PROXY_CACHE_TIME_SECONDS", 60),   // Default 60 seconds for faster purging when needed, can be increased in production
+			BrowserCacheTime: getEnvInt("BROWSER_CACHE_TIME_SECONDS", 30),   // Default 30 seconds for quick purging during development, can be increased in production
+			ProxyCacheTime:   getEnvInt("PROXY_CACHE_TIME_SECONDS", 60),     // Default 60 seconds for faster purging when needed, can be increased in production
 			AvatarCacheTime:  getEnvInt("AVATAR_CACHE_TIME_SECONDS", 86400), // Default 1 day: avatars never change for a given uuid + size
+		}
+		AvatarConfigInstance = AvatarConfig{
+			DefaultSize: getEnvInt("AVATAR_DEFAULT_SIZE", 256), // Used when /avatar/:uuid omits ?size
 		}
 		DatabaseConfigInstance = dbConfig
 		FileStorageConfigInstance = GetFileStorageConfig()

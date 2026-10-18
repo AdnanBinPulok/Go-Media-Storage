@@ -1,4 +1,4 @@
-﻿package avatar_generator
+package avatar_generator
 
 import (
 	"bytes"
@@ -314,4 +314,3 @@ func inkBounds(t *testing.T, pngBytes []byte, size int) (minPad float64, touches
 
 	return minPad, minX == 0 || minY == 0 || maxX == size-1 || maxY == size-1
 }
-

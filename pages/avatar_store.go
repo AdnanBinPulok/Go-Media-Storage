@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"go-media-storage/avatar_generator"
+	"go-media-storage/settings"
 )
 
 var (
@@ -24,6 +25,28 @@ func avatarStore() *avatar_generator.Cache {
 // heavySize is the edge length above which a render allocates enough memory to
 // be worth throttling. At 4096 the RGBA buffer alone is 64 MiB.
 const heavySize = 1024
+
+// avatarDefaultSize resolves the configured default against the generator's
+// accepted range. A zero or out-of-range env value falls back safely instead of
+// producing a broken render.
+func avatarDefaultSize() int {
+	size := settings.AvatarConfigInstance.DefaultSize
+	if size == 0 {
+		size = avatar_generator.DefaultSize
+	}
+	return clampAvatarSize(size)
+}
+
+func clampAvatarSize(size int) int {
+	switch {
+	case size < avatar_generator.MinSize:
+		return avatar_generator.MinSize
+	case size > avatar_generator.MaxSize:
+		return avatar_generator.MaxSize
+	default:
+		return size
+	}
+}
 
 // heavyRenderSlots bounds how many oversized avatars are drawn at once, and
 // heavyWait bounds how long a request waits for a slot before giving up.

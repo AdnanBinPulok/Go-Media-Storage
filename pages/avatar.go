@@ -30,13 +30,13 @@ func AvatarPage(router fiber.Router) {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid UUID")
 		}
 
-		size := avatar_generator.DefaultSize
+		size := avatarDefaultSize()
 		if raw := c.Query("size"); raw != "" {
 			parsed, err := strconv.Atoi(raw)
 			if err != nil {
 				return c.Status(fiber.StatusBadRequest).SendString("Invalid size")
 			}
-			size = parsed // clamped to MinSize..MaxSize by the generator
+			size = clampAvatarSize(parsed)
 		}
 
 		genStart := time.Now()

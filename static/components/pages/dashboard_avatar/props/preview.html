@@ -1,50 +1,42 @@
 <section class="flex flex-col overflow-hidden rounded-lg border border-white/10 bg-secondary/10">
-    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-secondary/30 px-4 py-3">
-        <div class="flex items-center gap-2">
-            <i class="fas fa-image text-sm font-semibold text-primary/80"></i>
-            <h3 class="text-sm font-semibold text-text-secondary md:text-base">Preview</h3>
+    <div class="flex items-center justify-between gap-2 border-b border-white/10 bg-secondary/30 px-3 py-2">
+        <div class="flex items-center gap-1.5">
+            <i class="fas fa-image text-[11px] text-accent"></i>
+            <h3 class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Preview</h3>
         </div>
-        <div class="flex items-center gap-2">
-            <span id="avatar-preview-meta" class="rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-muted">—</span>
-            <a id="avatar-download" href="#" download
-                class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:bg-secondary hover:text-text-secondary">
-                <i class="fas fa-download text-xs"></i> Download
-            </a>
-        </div>
+        <span id="avatar-preview-meta"
+            class="rounded bg-secondary/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted">—</span>
     </div>
 
-    <div class="grid grid-cols-1 gap-5 p-4 md:p-6 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
-        <div class="flex items-start justify-center">
-            <div class="avatar-checker rounded-xl border border-white/10 p-2">
-                <img id="avatar-image" alt="Generated avatar" width="256" height="256"
-                    class="h-auto w-full max-w-[256px] rounded-lg" />
-            </div>
+    <div class="flex flex-1 flex-col gap-3 p-3 sm:flex-row sm:items-start">
+        <div class="avatar-checker shrink-0 self-center rounded-lg border border-white/10 p-1 sm:self-start">
+            <img id="avatar-image" alt="Generated avatar" width="160" height="160"
+                class="h-auto w-32 rounded sm:w-36 md:w-40" />
         </div>
 
-        <div class="min-w-0 space-y-3">
-            <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.1em] text-muted">Request URL</p>
-                <p id="avatar-request-url"
-                    class="mt-1 break-all rounded-lg border border-white/10 bg-background/60 px-3 py-2 font-mono text-xs text-text-secondary">
-                    —
-                </p>
+        <div class="flex min-w-0 flex-1 flex-col gap-2">
+            <div class="flex items-center gap-1.5">
+                <input id="avatar-request-url" type="text" readonly spellcheck="false"
+                    class="min-w-0 flex-1 rounded-md border border-white/10 bg-background/60 px-2 py-1.5 font-mono text-[10px] text-text-secondary outline-none"
+                    value="—" />
+                <button type="button" onclick="copyAvatarURL()" title="Copy URL"
+                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-secondary/50 text-muted transition-colors hover:border-highlight/30 hover:text-text-secondary">
+                    <i class="fas fa-copy text-[10px]"></i>
+                </button>
             </div>
 
-            <dl class="grid grid-cols-2 gap-3 text-xs">
-                <div class="rounded-lg border border-white/10 bg-background/40 px-3 py-2">
-                    <dt class="text-muted">UUID</dt>
-                    <dd id="avatar-meta-uuid" class="mt-0.5 break-all font-mono text-text-secondary">—</dd>
-                </div>
-                <div class="rounded-lg border border-white/10 bg-background/40 px-3 py-2">
-                    <dt class="text-muted">Size</dt>
-                    <dd id="avatar-meta-size" class="mt-0.5 font-mono text-text-secondary">—</dd>
-                </div>
+            <dl class="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1 text-[10px]">
+                <dt class="text-muted">UUID</dt>
+                <dd id="avatar-meta-uuid" class="truncate font-mono text-text-secondary" title="">—</dd>
+                <dt class="text-muted">Size</dt>
+                <dd id="avatar-meta-size" class="font-mono tabular-nums text-text-secondary">—</dd>
+                <dt class="text-muted">Background</dt>
+                <dd class="text-text-secondary">transparent (5% padding)</dd>
             </dl>
 
-            <p class="text-xs leading-relaxed text-muted">
-                <i class="fas fa-info-circle mr-1 text-highlight/70"></i>
-                Background is a transparency checkerboard. The served PNG has a fully transparent background and a 5%
-                minimum padding so it survives circular crops.
+            <p class="mt-auto text-[10px] leading-relaxed text-muted">
+                <i class="fas fa-circle-notch mr-1 text-highlight/60"></i>
+                Same UUID and size always produce byte-identical PNGs.
             </p>
         </div>
     </div>

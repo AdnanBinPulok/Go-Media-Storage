@@ -1,88 +1,69 @@
 <section class="flex flex-col overflow-hidden rounded-lg border border-white/10 bg-secondary/10">
-    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-secondary/30 px-4 py-3">
-        <div class="flex items-center gap-2">
-            <i class="fas fa-user-circle text-sm font-semibold text-primary/80"></i>
-            <h3 class="text-sm font-semibold text-text-secondary md:text-base">Avatar Settings</h3>
+    <div class="flex items-center justify-between gap-2 border-b border-white/10 bg-secondary/30 px-3 py-2">
+        <div class="flex items-center gap-1.5">
+            <i class="fas fa-sliders-h text-[11px] text-accent"></i>
+            <h3 class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Settings</h3>
         </div>
-        <span class="rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-muted">UUID seeded</span>
+        <span class="rounded bg-secondary/60 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">seeded</span>
     </div>
 
-    <form id="avatar-form" class="p-4 md:p-6 space-y-5" novalidate onsubmit="handleAvatarGenerate(event)">
+    <form id="avatar-form" class="flex flex-col gap-3 p-3" novalidate onsubmit="handleAvatarGenerate(event)"
+        data-default-size="{{ .avatar.default_size }}" data-min-size="{{ .avatar.min_size }}"
+        data-max-size="{{ .avatar.max_size }}">
+
         <div>
-            <label for="avatar-uuid" class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.1em] text-muted">
+            <label for="avatar-uuid" class="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
                 UUID
             </label>
-            <div class="flex items-center gap-2">
-                <input id="avatar-uuid" type="text" spellcheck="false" autocomplete="off"
+            <div class="flex items-stretch gap-1.5">
+                <input id="avatar-uuid" type="text" spellcheck="false" autocomplete="off" autocapitalize="off"
                     placeholder="550e8400-e29b-41d4-a716-446655440000"
-                    class="flex-1 rounded-lg border border-white/15 bg-secondary px-3 py-2 font-mono text-sm text-text-secondary outline-none transition-colors focus:border-highlight/60" />
-                <button type="button" onclick="randomizeAvatarUUID()"
-                    class="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-secondary/50 px-3 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:bg-secondary hover:text-text-secondary"
-                    title="Generate a random UUID">
-                    <i class="fas fa-dice text-xs"></i> Random
+                    class="min-w-0 flex-1 rounded-md border border-white/15 bg-secondary px-2 py-1.5 font-mono text-[11px] text-text-secondary outline-none transition-colors placeholder:text-muted/40 focus:border-highlight/60" />
+                <button type="button" onclick="randomizeAvatarUUID()" title="Random UUID"
+                    class="flex w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-secondary/50 text-muted transition-colors hover:border-highlight/30 hover:text-text-secondary">
+                    <i class="fas fa-dice text-[11px]"></i>
                 </button>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <div>
-                <label for="avatar-size"
-                    class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.1em] text-muted">
-                    Size (px)
-                </label>
-                <input id="avatar-size" type="number" min="8" max="4096" step="1" value="256"
-                    class="w-full rounded-lg border border-white/15 bg-secondary px-3 py-2 text-sm text-text-secondary outline-none transition-colors focus:border-highlight/60" />
-                <p class="mt-1 text-xs text-muted">Optional. Defaults to 256, clamped to 8–4096.</p>
+        <div>
+            <label for="avatar-size" class="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-muted">
+                Size
+            </label>
+            <div class="flex items-center gap-1.5">
+                <input id="avatar-size" type="number" step="1" value="{{ .avatar.default_size }}"
+                    min="{{ .avatar.min_size }}" max="{{ .avatar.max_size }}"
+                    class="w-20 rounded-md border border-white/15 bg-secondary px-2 py-1.5 text-[11px] text-text-secondary outline-none transition-colors focus:border-highlight/60" />
+                <span class="text-[10px] text-muted">{{ .avatar.min_size }}–{{ .avatar.max_size }} px</span>
             </div>
 
-            <div>
-                <span class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.1em] text-muted">
-                    Quick sizes
-                </span>
-                <div id="avatar-size-presets" class="flex flex-wrap gap-1.5">
-                    <button type="button" data-size="16"
-                        class="avatar-size-chip rounded-md border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:text-text-secondary">16</button>
-                    <button type="button" data-size="32"
-                        class="avatar-size-chip rounded-md border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:text-text-secondary">32</button>
-                    <button type="button" data-size="64"
-                        class="avatar-size-chip rounded-md border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:text-text-secondary">64</button>
-                    <button type="button" data-size="128"
-                        class="avatar-size-chip rounded-md border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:text-text-secondary">128</button>
-                    <button type="button" data-size="256"
-                        class="avatar-size-chip rounded-md border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:text-text-secondary">256</button>
-                    <button type="button" data-size="512"
-                        class="avatar-size-chip rounded-md border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:text-text-secondary">512</button>
-                    <button type="button" data-size="1024"
-                        class="avatar-size-chip rounded-md border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:text-text-secondary">1024</button>
-                    <button type="button" data-size="2048"
-                        class="avatar-size-chip rounded-md border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:text-text-secondary">2048</button>
-                    <button type="button" data-size="4096"
-                        class="avatar-size-chip rounded-md border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:text-text-secondary">4096</button>
-                </div>
+            <div id="avatar-size-presets" class="mt-2 flex flex-wrap gap-1">
+                {{ range .avatar.presets }}
+                <button type="button" data-size="{{ . }}"
+                    class="avatar-size-chip rounded border border-white/10 bg-secondary/50 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted transition-colors hover:border-highlight/40 hover:text-text-secondary">{{ . }}</button>
+                {{ end }}
             </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-1.5">
             <button id="avatar-generate-btn" type="submit"
-                class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-btn-primary px-4 py-2.5 text-sm font-semibold text-btn-primary-text transition-colors hover:bg-btn-primary-hover disabled:cursor-not-allowed disabled:opacity-50">
-                <i class="fas fa-magic"></i>
-                <span>Generate Avatar</span>
+                class="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-btn-primary px-3 py-1.5 text-xs font-semibold text-btn-primary-text transition-colors hover:bg-btn-primary-hover">
+                <i class="fas fa-bolt text-[10px]"></i>
+                <span>Generate</span>
             </button>
-            <button type="button" onclick="copyAvatarURL()"
-                class="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-secondary/50 px-4 py-2.5 text-sm font-medium text-muted transition-all hover:border-highlight/30 hover:bg-secondary hover:text-text-secondary">
-                <i class="fas fa-copy text-xs"></i>
-                <span>Copy URL</span>
+            <button type="button" onclick="copyAvatarURL()" title="Copy URL"
+                class="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-secondary/50 text-muted transition-colors hover:border-highlight/30 hover:text-text-secondary">
+                <i class="fas fa-link text-[11px]"></i>
             </button>
+            <a id="avatar-download" href="#" download title="Download PNG"
+                class="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-secondary/50 text-muted transition-colors hover:border-highlight/30 hover:text-text-secondary">
+                <i class="fas fa-download text-[11px]"></i>
+            </a>
         </div>
 
-        <div class="rounded-lg border border-white/10 bg-secondary/40 px-4 py-3">
-            <p class="text-xs text-muted leading-relaxed">
-                <i class="fas fa-link mr-1 text-highlight/70"></i>
-                Leave the UUID empty and press Generate to create a random one. The generated URL can be embedded
-                anywhere:
-                <code id="avatar-url-hint"
-                    class="ml-1 break-all rounded bg-background/60 px-1.5 py-0.5 font-mono text-[11px] text-text-secondary">/avatar/&lt;uuid&gt;?size=256</code>
-            </p>
-        </div>
+        <p class="text-[10px] leading-relaxed text-muted">
+            Leave the UUID empty to generate a random one. The default size comes from
+            <code class="font-mono text-text-secondary">AVATAR_DEFAULT_SIZE</code>.
+        </p>
     </form>
 </section>
