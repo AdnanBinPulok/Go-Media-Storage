@@ -39,13 +39,13 @@ func AvatarPage(router fiber.Router) {
 			size = parsed // clamped to MinSize..MaxSize by the generator
 		}
 
-		gen_start := time.Now()
+		genStart := time.Now()
 
 		png, hit, err := avatarPNG(id, size)
 		if err != nil {
 			return err
 		}
-		gen_end := time.Since(gen_start)
+		genTime := time.Since(genStart)
 
 		setAvatarCacheHeaders(c, id, size)
 
@@ -64,7 +64,7 @@ func AvatarPage(router fiber.Router) {
 		c.Set(fiber.HeaderContentType, "image/png")
 		c.Set("X-Content-Type-Options", "nosniff")
 
-		c.Set("X-Avatar-Generation-Time", fmt.Sprintf("%dms", gen_end.Milliseconds()))
+		c.Set("X-Avatar-Generation-Time", fmt.Sprintf("%dms", genTime.Milliseconds()))
 
 		return c.Send(png)
 	})

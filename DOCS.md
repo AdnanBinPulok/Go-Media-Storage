@@ -420,8 +420,19 @@ Runs in a **background goroutine**. Endpoint returns **`201 Created`** immediate
 | `/dashboard/upload` | Session | Upload UI |
 | `/dashboard/vaults` | Session | Vault management |
 | `/dashboard/compress` | Session | Compression UI (`?file_url=…`) |
+| `/dashboard/avatar` | Session | Avatar playground (random UUID + size) |
 
 Dashboard pages use rate limiting: **50 requests / 5 seconds** per IP.
+
+### Avatar delivery
+
+| Path | Auth | Description |
+|------|------|-------------|
+| `/avatar/:uuid` | Public | Deterministic PNG avatar (`?size=8..4096`, default 256) |
+
+Only valid UUIDs are accepted (canonical, uppercase, 32-hex, braced, or `urn:uuid:`); all spellings normalize to one lowercase form and therefore one cache entry. Responses are cached in memory (5 min, 10,000 items, 256 MiB) and served with `Cache-Control: public, max-age={AVATAR_CACHE_TIME_SECONDS}, s-maxage=…, immutable` plus `CDN-Cache-Control` / `Cloudflare-CDN-Cache-Control`, a stable `ETag`, and `X-Avatar-Cache: HIT|MISS`.
+
+Cloudflare needs a Cache Rule for `^/avatar/` (no file extension means the default static cache ignores it). Keep cache level **Standard** so `?size=` stays part of the cache key.
 
 Templates live under `static/pages/` and `static/components/`. Rendered via `utils.RenderPage`.
 
@@ -466,7 +477,11 @@ Environment is loaded from **`secrets/.env`** (optional; Docker can inject env d
 
 ### Proxy trust
 
-Fiber is configured with `ProxyHeader: X-Real-IP` and trusted proxies `127.0.0.1`, `::1` for correct client IP behind a reverse proxy.
+Fiber is configured with `ProxyHeader: CF-Connecting-IP` and trusted proxies `127.0.0.1`, `::1`, so the client IP is read from Cloudflare only when the request arrives through a local reverse proxy (nginx/Caddy on the same host).
+
+If the app is exposed directly to Cloudflare with no local proxy, the peer address is a Cloudflare edge IP, not `127.0.0.1`, so `CF-Connecting-IP` is ignored and `c.IP()` becomes the edge IP. Every visitor then shares one rate-limit bucket. Add Cloudflare's published ranges to `TrustedProxies`, or terminate TLS in a local reverse proxy.
+
+This matters for the public `/avatar/:uuid` limiter: with an untrusted header the 300 requests / 10s budget applies to the whole edge, not per visitor.
 
 ---
 

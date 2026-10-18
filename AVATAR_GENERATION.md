@@ -942,7 +942,7 @@ it lives in `pages/avatar.go` plus `pages/avatar_store.go`.
 ```go
 func AvatarPage(router fiber.Router) {
 	rateLimiter := utils.RateLimiter(utils.RateLimitConfig{
-		Requests: 120,
+		Requests: 300,
 		Window:   time.Second * 10,
 		Scope:    "avatar", // keep this counter out of the dashboard limiter
 	})
@@ -983,6 +983,9 @@ func AvatarPage(router fiber.Router) {
 		} else {
 			c.Set("X-Avatar-Cache", "MISS")
 		}
+		// Debug only: cache hits report ~0ms. Cloudflare caches this header too,
+		// so an edge hit still shows the origin's value.
+		c.Set("X-Avatar-Generation-Time", fmt.Sprintf("%dms", genTime.Milliseconds()))
 
 		return c.Send(png)
 	})
@@ -1100,5 +1103,5 @@ Behavior worth noting:
   same inputs the server would and shows the canonical spelling it will request.
 - Size is clamped to 8..4096 with a warning notification rather than an error.
 - Gallery tiles use `?size=128`; each one is a distinct cache entry, which is
-  why the route's rate limit is set to 120 per 10 seconds.
+  why the route's rate limit is set to 300 per 10 seconds.
 

@@ -74,6 +74,33 @@ func TestOutputShape(t *testing.T) {
 	}
 }
 
+func TestMinSizeHasInk(t *testing.T) {
+	// The radius floor exists so an 8px avatar with heavy padding is not blank.
+	// Both extremes of the padding range are checked.
+	for _, padding := range []float64{0, DefaultPaddingPct, MaxPaddingPct} {
+		for _, id := range testIDs[:6] {
+			data := mustPNG(t, id, MinSize, padding)
+
+			img, err := png.Decode(bytes.NewReader(data))
+			if err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+
+			ink := 0
+			for y := 0; y < MinSize; y++ {
+				for x := 0; x < MinSize; x++ {
+					if _, _, _, a := img.At(x, y).RGBA(); a>>8 > 16 {
+						ink++
+					}
+				}
+			}
+			if ink == 0 {
+				t.Errorf("id %q padding %v: %dpx avatar is blank", id, padding, MinSize)
+			}
+		}
+	}
+}
+
 func TestPaddingRespected(t *testing.T) {
 	for _, padding := range []float64{0, 0.02, 0.05, 0.10, 0.20} {
 		for _, size := range []int{64, 128, 256, 512} {

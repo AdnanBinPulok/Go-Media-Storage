@@ -18,6 +18,9 @@ type RateLimitConfig struct {
 }
 
 type visitor struct {
+	// mu guards count and reset. Fiber serves requests concurrently, so
+	// read-modify-write on the counter has to be serialized or the limit leaks.
+	mu    sync.Mutex
 	count int
 	reset time.Time
 }
@@ -39,12 +42,20 @@ func RateLimiter(cfg RateLimitConfig) fiber.Handler {
 		})
 		v := vAny.(*visitor)
 
+		v.mu.Lock()
 		if now.After(v.reset) {
 			v.count = 0
 			v.reset = now.Add(cfg.Window)
 		}
+		limited := v.count >= cfg.Requests
+		if !limited {
+			v.count++
+		}
+		v.mu.Unlock()
 
-		if v.count >= cfg.Requests {
+		// c.Next() must not run under the visitor lock: it would serialize every
+		// request from this IP behind the handler.
+		if limited {
 			// 🔥 let error handler decide
 			return fiber.NewError(
 				fiber.StatusTooManyRequests,
@@ -52,7 +63,6 @@ func RateLimiter(cfg RateLimitConfig) fiber.Handler {
 			)
 		}
 
-		v.count++
 		return c.Next()
 	}
 }
