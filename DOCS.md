@@ -462,6 +462,7 @@ Environment is loaded from **`secrets/.env`** (optional; Docker can inject env d
 | `FILE_STORAGE_LIMIT` | `0` | Global cap (`0` = unlimited). Supports `500MB`, `2GB`, etc. |
 | `BROWSER_CACHE_TIME_SECONDS` | `30` | `max-age` for served files |
 | `PROXY_CACHE_TIME_SECONDS` | `60` | `s-maxage` for CDN/proxy |
+| `AVATAR_CACHE_TIME_SECONDS` | `86400` | `max-age` / `s-maxage` / CDN TTL for `/avatar/:uuid` |
 
 ### Proxy trust
 

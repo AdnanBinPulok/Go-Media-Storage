@@ -70,13 +70,13 @@ func renderImage(spec avatarSpec, size int, paddingPct float64) *image.RGBA {
 	full := img.Bounds()
 
 	// f is fitted into [-1,1], so bodyRadius is a hard bound on the drawing.
-	// On a tiny canvas an extreme padding would leave nothing to draw, so cap it
-	// to keep at least a 2px shape.
-	if limit := 0.5 - 2/float64(size); paddingPct > limit {
-		paddingPct = limit
+	// An extreme padding on a tiny canvas would leave nothing to draw, so floor
+	// the extent to keep at least a dot of ink.
+	maxExtent := (0.5-paddingPct)*float64(size) - fringePx
+	if maxExtent < 1.5 {
+		maxExtent = 1.5
 	}
 
-	maxExtent := (0.5-paddingPct)*float64(size) - fringePx
 	bodyRadius := spec.BodyScale * maxExtent
 
 	// 1. body

@@ -1,0 +1,51 @@
+<section class="flex flex-col overflow-hidden rounded-lg border border-white/10 bg-secondary/10">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-secondary/30 px-4 py-3">
+        <div class="flex items-center gap-2">
+            <i class="fas fa-image text-sm font-semibold text-primary/80"></i>
+            <h3 class="text-sm font-semibold text-text-secondary md:text-base">Preview</h3>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="avatar-preview-meta" class="rounded-md bg-secondary/50 px-2 py-0.5 text-xs font-medium text-muted">—</span>
+            <a id="avatar-download" href="#" download
+                class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-secondary/50 px-2.5 py-1 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:bg-secondary hover:text-text-secondary">
+                <i class="fas fa-download text-xs"></i> Download
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-5 p-4 md:p-6 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+        <div class="flex items-start justify-center">
+            <div class="avatar-checker rounded-xl border border-white/10 p-2">
+                <img id="avatar-image" alt="Generated avatar" width="256" height="256"
+                    class="h-auto w-full max-w-[256px] rounded-lg" />
+            </div>
+        </div>
+
+        <div class="min-w-0 space-y-3">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.1em] text-muted">Request URL</p>
+                <p id="avatar-request-url"
+                    class="mt-1 break-all rounded-lg border border-white/10 bg-background/60 px-3 py-2 font-mono text-xs text-text-secondary">
+                    —
+                </p>
+            </div>
+
+            <dl class="grid grid-cols-2 gap-3 text-xs">
+                <div class="rounded-lg border border-white/10 bg-background/40 px-3 py-2">
+                    <dt class="text-muted">UUID</dt>
+                    <dd id="avatar-meta-uuid" class="mt-0.5 break-all font-mono text-text-secondary">—</dd>
+                </div>
+                <div class="rounded-lg border border-white/10 bg-background/40 px-3 py-2">
+                    <dt class="text-muted">Size</dt>
+                    <dd id="avatar-meta-size" class="mt-0.5 font-mono text-text-secondary">—</dd>
+                </div>
+            </dl>
+
+            <p class="text-xs leading-relaxed text-muted">
+                <i class="fas fa-circle-info mr-1 text-highlight/70"></i>
+                Background is a transparency checkerboard. The served PNG has a fully transparent background and a 5%
+                minimum padding so it survives circular crops.
+            </p>
+        </div>
+    </div>
+</section>

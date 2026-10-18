@@ -48,7 +48,9 @@ func TestDifferentIDsDiffer(t *testing.T) {
 }
 
 func TestOutputShape(t *testing.T) {
-	for _, size := range []int{MinSize, 64, 256, MaxSize} {
+	// MaxSize is excluded here: a 4096 render is valid but slow, and the size
+	// math is identical at every scale.
+	for _, size := range []int{MinSize, 64, DefaultSize, 512} {
 		data, err := GeneratePNG("shape-check", size, DefaultPaddingPct)
 		if err != nil {
 			t.Fatalf("size %d: %v", size, err)
@@ -74,7 +76,7 @@ func TestOutputShape(t *testing.T) {
 
 func TestPaddingRespected(t *testing.T) {
 	for _, padding := range []float64{0, 0.02, 0.05, 0.10, 0.20} {
-		for _, size := range []int{64, 128, 256, MaxSize} {
+		for _, size := range []int{64, 128, 256, 512} {
 			for _, id := range testIDs[:4] {
 				data, err := GeneratePNG(id, size, padding)
 				if err != nil {
@@ -95,6 +97,25 @@ func TestPaddingRespected(t *testing.T) {
 }
 
 func TestClamping(t *testing.T) {
+	// Checked through the clamp helpers so the test does not have to render a
+	// 4096px image (about a second and a 64 MiB buffer) to prove the bound.
+	if got := clampSize(-100); got != MinSize {
+		t.Errorf("clampSize(-100) = %d, want %d", got, MinSize)
+	}
+	if got := clampSize(MaxSize + 1); got != MaxSize {
+		t.Errorf("clampSize(MaxSize+1) = %d, want %d", got, MaxSize)
+	}
+	if got := clampSize(DefaultSize); got != DefaultSize {
+		t.Errorf("clampSize(DefaultSize) = %d, want %d", got, DefaultSize)
+	}
+	if got := clampPadding(-5); got != 0 {
+		t.Errorf("clampPadding(-5) = %v, want 0", got)
+	}
+	if got := clampPadding(99); got != MaxPaddingPct {
+		t.Errorf("clampPadding(99) = %v, want %v", got, MaxPaddingPct)
+	}
+
+	// And confirm the clamp actually reaches the renderer.
 	small, err := GeneratePNG("clamp", 1, -5)
 	if err != nil {
 		t.Fatalf("GeneratePNG: %v", err)
@@ -103,12 +124,16 @@ func TestClamping(t *testing.T) {
 		t.Error("size below MinSize and negative padding were not clamped to the documented values")
 	}
 
-	large, err := GeneratePNG("clamp", 5000, 99)
+	huge, err := GeneratePNG("clamp", 5000, 99)
 	if err != nil {
 		t.Fatalf("GeneratePNG: %v", err)
 	}
-	if !bytes.Equal(large, mustPNG(t, "clamp", MaxSize, MaxPaddingPct)) {
-		t.Error("size above MaxSize and padding above MaxPaddingPct were not clamped")
+	img, err := png.Decode(bytes.NewReader(huge))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if img.Bounds().Dx() != MaxSize || img.Bounds().Dy() != MaxSize {
+		t.Errorf("size %d did not clamp to %dx%d", 5000, MaxSize, MaxSize)
 	}
 }
 
@@ -213,7 +238,7 @@ func BenchmarkGeneratePNG256(b *testing.B) {
 func BenchmarkGeneratePNG512(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		if _, err := GeneratePNG(testIDs[0], MaxSize, DefaultPaddingPct); err != nil {
+		if _, err := GeneratePNG(testIDs[0], 512, DefaultPaddingPct); err != nil {
 			b.Fatal(err)
 		}
 	}

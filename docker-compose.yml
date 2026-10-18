@@ -27,6 +27,7 @@ services:
 
       BROWSER_CACHE_TIME_SECONDS: "${BROWSER_CACHE_TIME_SECONDS:-30}"
       PROXY_CACHE_TIME_SECONDS: "${PROXY_CACHE_TIME_SECONDS:-60}"
+      AVATAR_CACHE_TIME_SECONDS: "${AVATAR_CACHE_TIME_SECONDS:-86400}"
     volumes:
       # Persistent uploaded files
       - storage_data:/app/storage

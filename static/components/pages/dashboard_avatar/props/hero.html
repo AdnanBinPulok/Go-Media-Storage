@@ -1,0 +1,24 @@
+<section class="relative overflow-hidden">
+    <div class="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-highlight/10 blur-3xl"></div>
+    <div class="pointer-events-none absolute -left-16 bottom-0 h-40 w-40 rounded-full bg-btn-primary/10 blur-3xl"></div>
+
+    <div class="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-highlight">Dashboard Avatars</p>
+            <h2 class="mt-1 text-lg font-heading font-semibold text-text-secondary md:text-xl">Generate a deterministic
+                avatar from any UUID</h2>
+        </div>
+        <a href="/dashboard"
+            class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-secondary/50 px-3 py-1.5 text-xs font-medium text-muted transition-all hover:border-highlight/30 hover:bg-secondary hover:text-text-secondary">
+            <i class="fas fa-arrow-left text-xs"></i> Back to Overview
+        </a>
+    </div>
+
+    <p class="relative z-10 mt-4 max-w-3xl text-xs leading-relaxed text-muted">
+        <i class="fas fa-info-circle mr-1 text-highlight/70"></i>
+        The same UUID always produces the same avatar, so you can use it as a stable profile image. Size is optional
+        and accepts <span class="text-text-secondary">8</span> to
+        <span class="text-text-secondary">4096</span> pixels; the route defaults to
+        <span class="text-text-secondary">256</span>.
+    </p>
+</section>

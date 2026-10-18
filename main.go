@@ -27,6 +27,7 @@ func RegisterPages(app *fiber.App) {
 		pages.AvatarPage,
 		pages.SignupPage,
 		pages.DashboardPage,
+		pages.DashboardAvatarPage,
 		pages.FilePage,
 	}
 
@@ -88,10 +89,9 @@ func main() {
 	app := fiber.New(fiber.Config{
 		Views:                   engine,
 		ErrorHandler:            utils.ErrorHandler,
-		ProxyHeader:             "X-Real-IP",
+		ProxyHeader:             "CF-Connecting-IP",
 		EnableTrustedProxyCheck: true,
 		TrustedProxies:          []string{"127.0.0.1", "::1"},
-		ETag:                    true,
 		BodyLimit:               1024 * 1024 * 1024, // 1 GB
 	})
 	app.Use(logger.New())

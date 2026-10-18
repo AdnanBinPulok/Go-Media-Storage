@@ -13,8 +13,15 @@ const (
 	// MinSize and MaxSize bound the output edge in pixels. Anything outside is
 	// clamped, not rejected, so callers cannot get an error from a bad query
 	// parameter alone.
-	MinSize = 16
-	MaxSize = 512
+	//
+	// MaxSize is large on purpose: at 4096 the render costs roughly a second and
+	// a 64 MiB transient buffer, so callers that expose the size to the public
+	// must gate concurrency (see pages/avatar.go).
+	MinSize = 8
+	MaxSize = 4096
+
+	// DefaultSize is the size used when the caller has no opinion.
+	DefaultSize = 256
 
 	// DefaultPaddingPct is a 5% transparent border on every side. This is what
 	// keeps avatars from touching the edge of a circular crop.
