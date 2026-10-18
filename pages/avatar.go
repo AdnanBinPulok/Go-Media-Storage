@@ -17,7 +17,7 @@ import (
 // for a long time and the ETag never changes for a given pair.
 func AvatarPage(router fiber.Router) {
 	rateLimiter := utils.RateLimiter(utils.RateLimitConfig{
-		Requests: 120,
+		Requests: 300,
 		Window:   time.Second * 10,
 		Scope:    "avatar",
 	})
