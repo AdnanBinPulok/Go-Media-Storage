@@ -474,6 +474,7 @@ Environment is loaded from **`secrets/.env`** (optional; Docker can inject env d
 | `BROWSER_CACHE_TIME_SECONDS` | `30` | `max-age` for served files |
 | `PROXY_CACHE_TIME_SECONDS` | `60` | `s-maxage` for CDN/proxy |
 | `AVATAR_CACHE_TIME_SECONDS` | `86400` | `max-age` / `s-maxage` / CDN TTL for `/avatar/:uuid` |
+| `AVATAR_DEFAULT_SIZE` | `256` | Edge length used by `/avatar/:uuid` and the dashboard when `?size` is omitted (clamped to 8–4096) |
 
 ### Proxy trust
 
