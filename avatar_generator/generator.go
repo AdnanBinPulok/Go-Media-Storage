@@ -1,13 +1,10 @@
 package avatar_generator
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"image"
-	"image/png"
 	"strconv"
 	"sync"
 )
@@ -16,10 +13,36 @@ import (
 // accepts any content, so this is the only input that can be rejected.
 var ErrIDTooLong = errors.New("avatar_generator: id exceeds MaxIDLength")
 
-// bufPool recycles the PNG write buffer. Encode is called on every cache miss,
-// so a per-call buffer would be pure garbage.
-var bufPool = sync.Pool{
-	New: func() any { return new(bytes.Buffer) },
+// maxPooledRGBA keeps a 4096px canvas (64 MiB) from being pinned in the pool.
+// Larger buffers are left to the garbage collector after a single use.
+const maxPooledRGBA = 16 << 20
+
+// rgbaPool recycles canvas buffers. Every render starts from a fully
+// transparent canvas, so acquire zeroes the bytes it hands out.
+var rgbaPool = sync.Pool{
+	New: func() any { return &image.RGBA{} },
+}
+
+func acquireRGBA(size int) *image.RGBA {
+	n := size * size * 4
+
+	img := rgbaPool.Get().(*image.RGBA)
+	if cap(img.Pix) < n {
+		img.Pix = make([]byte, n)
+	}
+	img.Pix = img.Pix[:n]
+	img.Stride = size * 4
+	img.Rect = image.Rect(0, 0, size, size)
+	clear(img.Pix)
+
+	return img
+}
+
+func releaseRGBA(img *image.RGBA) {
+	if cap(img.Pix) > maxPooledRGBA {
+		return
+	}
+	rgbaPool.Put(img)
 }
 
 // GeneratePNG renders a deterministic avatar and returns PNG bytes.
@@ -53,18 +76,30 @@ func ETag(id string, size int, paddingPct float64) string {
 	return `"` + hex.EncodeToString(sum) + `"`
 }
 
-// renderPNG draws and encodes. The caller must pass already-clamped values.
+// renderPNG draws into a pooled canvas and encodes. The caller must pass
+// already-clamped values.
 func renderPNG(spec avatarSpec, size int, paddingPct float64) ([]byte, error) {
-	return encodePNG(renderImage(spec, size, paddingPct))
+	img := acquireRGBA(size)
+	defer releaseRGBA(img)
+
+	drawAvatar(img, spec, size, paddingPct)
+	return encodePNG(img)
 }
 
-// renderImage is the drawing pass. It returns a straight-alpha RGBA image with
-// a fully transparent background.
+// renderImage draws into a new canvas. Tests and benchmarks use it; the route
+// path goes through renderPNG so the buffer is recycled.
 func renderImage(spec avatarSpec, size int, paddingPct float64) *image.RGBA {
+	img := image.NewRGBA(image.Rect(0, 0, size, size))
+	drawAvatar(img, spec, size, paddingPct)
+	return img
+}
+
+// drawAvatar is the drawing pass. Pixels are stored premultiplied (the standard
+// image.RGBA layout) over a fully transparent background.
+func drawAvatar(img *image.RGBA, spec avatarSpec, size int, paddingPct float64) {
 	f := spec.form()
 	defer f.release()
 
-	img := image.NewRGBA(image.Rect(0, 0, size, size))
 	cx := float64(size) / 2
 	cy := cx
 	full := img.Bounds()
@@ -88,8 +123,6 @@ func renderImage(spec avatarSpec, size int, paddingPct float64) *image.RGBA {
 
 	// 3. eyes, placed relative to the face that actually got drawn
 	drawEyes(img, spec, size, spec.faceInfo(cx, cy, bodyRadius))
-
-	return img
 }
 
 func drawFace(img *image.RGBA, spec avatarSpec, f *shapeForm, cx, cy, bodyR float64, full image.Rectangle) {
@@ -119,20 +152,11 @@ func drawFace(img *image.RGBA, spec avatarSpec, f *shapeForm, cx, cy, bodyR floa
 	}
 }
 
-// encodePNG writes PNG at BestSpeed. BestCompression costs ~15ms more per avatar
-// and saves a few KB; since responses are cached and re-sent, latency wins.
-// Switch to png.DefaultCompression if bandwidth matters more than CPU.
-func encodePNG(img image.Image) ([]byte, error) {
-	buf := bufPool.Get().(*bytes.Buffer)
-	buf.Reset()
-	defer bufPool.Put(buf)
-
-	enc := png.Encoder{CompressionLevel: png.BestSpeed}
-	if err := enc.Encode(buf, img); err != nil {
-		return nil, fmt.Errorf("avatar_generator: encode png: %w", err)
-	}
-
-	out := make([]byte, buf.Len())
-	copy(out, buf.Bytes())
-	return out, nil
+// encodePNG writes the avatar canvas as an 8-bit RGBA PNG.
+//
+// The dedicated writer in pngfast.go replaces image/png, which spends most of
+// its time trying five filters per row. Decoded pixels are identical; only the
+// compressed bytes differ.
+func encodePNG(img *image.RGBA) ([]byte, error) {
+	return encodePNGFast(img)
 }

@@ -430,7 +430,7 @@ Dashboard pages use rate limiting: **50 requests / 5 seconds** per IP.
 |------|------|-------------|
 | `/avatar/:uuid` | Public | Deterministic PNG avatar (`?size=8..4096`, default 256) |
 
-Only valid UUIDs are accepted (canonical, uppercase, 32-hex, braced, or `urn:uuid:`); all spellings normalize to one lowercase form and therefore one cache entry. Responses are cached in memory (5 min, 10,000 items, 256 MiB) and served with `Cache-Control: public, max-age={AVATAR_CACHE_TIME_SECONDS}, s-maxage=…, immutable` plus `CDN-Cache-Control` / `Cloudflare-CDN-Cache-Control`, a stable `ETag`, and `X-Avatar-Cache: HIT|MISS`.
+Only valid UUIDs are accepted (canonical, uppercase, 32-hex, braced, or `urn:uuid:`); all spellings normalize to one lowercase form and therefore one cache entry. Responses are cached in memory for `AVATAR_MEMORY_TTL_SECONDS` (default 1 hour, bounded by 10,000 items / 256 MiB, with concurrent misses for the same avatar coalesced into one render) and served with `Cache-Control: public, max-age={AVATAR_CACHE_TIME_SECONDS}, s-maxage=…, immutable` plus `CDN-Cache-Control` / `Cloudflare-CDN-Cache-Control`, a stable `ETag`, and `X-Avatar-Cache: HIT|MISS`. `X-Avatar-Generation-Time` reports the origin render time in microseconds and excludes any queueing behind the large-render gate.
 
 Cloudflare needs a Cache Rule for `^/avatar/` (no file extension means the default static cache ignores it). Keep cache level **Standard** so `?size=` stays part of the cache key.
 
@@ -475,6 +475,7 @@ Environment is loaded from **`secrets/.env`** (optional; Docker can inject env d
 | `PROXY_CACHE_TIME_SECONDS` | `60` | `s-maxage` for CDN/proxy |
 | `AVATAR_CACHE_TIME_SECONDS` | `86400` | `max-age` / `s-maxage` / CDN TTL for `/avatar/:uuid` |
 | `AVATAR_DEFAULT_SIZE` | `256` | Edge length used by `/avatar/:uuid` and the dashboard when `?size` is omitted (clamped to 8–4096) |
+| `AVATAR_MEMORY_TTL_SECONDS` | `3600` | In-process avatar render cache TTL (still bounded by 10 000 items / 256 MiB) |
 
 ### Proxy trust
 

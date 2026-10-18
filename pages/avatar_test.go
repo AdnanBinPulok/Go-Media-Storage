@@ -52,8 +52,8 @@ func TestAvatarRouteHeadersAndCaching(t *testing.T) {
 	if got := resp.Header.Get("X-Avatar-Cache"); got != "MISS" {
 		t.Errorf("X-Avatar-Cache = %q, want MISS on first request", got)
 	}
-	if got := resp.Header.Get("X-Avatar-Generation-Time"); !strings.HasSuffix(got, "ms") {
-		t.Errorf("X-Avatar-Generation-Time = %q, want a millisecond value", got)
+	if got := resp.Header.Get("X-Avatar-Generation-Time"); !strings.HasSuffix(got, "us") {
+		t.Errorf("X-Avatar-Generation-Time = %q, want a microsecond value", got)
 	}
 
 	// Second request must come from the in-memory cache.

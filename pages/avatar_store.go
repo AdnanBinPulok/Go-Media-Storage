@@ -17,7 +17,11 @@ var (
 // every route so that a warm avatar is a warm avatar everywhere.
 func avatarStore() *avatar_generator.Cache {
 	avatarCacheOnce.Do(func() {
-		avatarCache = avatar_generator.NewCache(avatar_generator.DefaultCacheConfig())
+		cfg := avatar_generator.DefaultCacheConfig()
+		if ttl := settings.CachingConfigInstance.AvatarMemoryTTL; ttl > 0 {
+			cfg.TTL = time.Duration(ttl) * time.Second
+		}
+		avatarCache = avatar_generator.NewCache(cfg)
 	})
 	return avatarCache
 }
