@@ -16,7 +16,7 @@ func GeneratePNG(id string, size int, paddingPct float64) ([]byte, error)
 | arg | meaning |
 |---|---|
 | `id` | any string up to 256 bytes; hashed to a seed, so `user_42` works as well as a UUID |
-| `size` | output edge in pixels, clamped to 8..4096, default 256 |
+| `size` | output edge in pixels, clamped to 8..4096, default `AVATAR_DEFAULT_SIZE` (256) |
 | `paddingPct` | minimum transparent border per side, as a fraction of width (`0.05` = 5%), clamped to 0..0.45 |
 
 Budget: **~4.8 ms** per 256 px avatar, **~14 ms** at 512 px, single goroutine.
@@ -690,7 +690,7 @@ Two constants worth understanding:
 
 ```go
 const DefaultPaddingPct = 0.05 // caller passes this when it has no opinion
-const DefaultSize       = 256  // route default when ?size is absent
+const DefaultSize       = 256  // fallback when AVATAR_DEFAULT_SIZE is unset
 const fringePx = 1.0           // AAA fringe half-width, in final pixels
 ```
 
@@ -797,6 +797,7 @@ The HTTP layer has its own suite in `pages/avatar_test.go`:
 | UUID rejection | `TestAvatarRouteRejectsInvalidUUID` | 400 for non-UUIDs |
 | size rejection | `TestAvatarRouteRejectsInvalidSize` | 400 for `?size=abc` |
 | size handling | `TestAvatarRouteSizes` | default 256, min 8, max 4096 |
+| configurable default | `TestAvatarDefaultSizeFromEnv` | `AVATAR_DEFAULT_SIZE` reaches route + dashboard, clamps out-of-range |
 | conditional requests | `TestAvatarRouteNotModified` | 304 with an empty body |
 | ETag keying | `TestAvatarRouteETagVariesWithSize` | ETag changes with size |
 | dashboard templates | `TestDashboardAvatarTemplateRenders` | page executes and contains the controls |
@@ -955,13 +956,13 @@ func AvatarPage(router fiber.Router) {
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid UUID")
 		}
 
-		size := avatar_generator.DefaultSize
+		size := avatarDefaultSize() // AVATAR_DEFAULT_SIZE, clamped to 8..4096
 		if raw := c.Query("size"); raw != "" {
 			parsed, err := strconv.Atoi(raw)
 			if err != nil {
 				return c.Status(fiber.StatusBadRequest).SendString("Invalid size")
 			}
-			size = parsed // clamped to MinSize..MaxSize by the generator
+			size = clampAvatarSize(parsed)
 		}
 
 		png, hit, err := avatarPNG(id, size)
