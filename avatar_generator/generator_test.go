@@ -1,4 +1,4 @@
-﻿package avatar_generator
+package avatar_generator
 
 import (
 	"bytes"
@@ -70,6 +70,33 @@ func TestOutputShape(t *testing.T) {
 
 		if _, _, _, a := img.At(0, 0).RGBA(); a != 0 {
 			t.Errorf("size %d: corner alpha = %d, want 0 (transparent)", size, a)
+		}
+	}
+}
+
+func TestMinSizeHasInk(t *testing.T) {
+	// The radius floor exists so an 8px avatar with heavy padding is not blank.
+	// Both extremes of the padding range are checked.
+	for _, padding := range []float64{0, DefaultPaddingPct, MaxPaddingPct} {
+		for _, id := range testIDs[:6] {
+			data := mustPNG(t, id, MinSize, padding)
+
+			img, err := png.Decode(bytes.NewReader(data))
+			if err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+
+			ink := 0
+			for y := 0; y < MinSize; y++ {
+				for x := 0; x < MinSize; x++ {
+					if _, _, _, a := img.At(x, y).RGBA(); a>>8 > 16 {
+						ink++
+					}
+				}
+			}
+			if ink == 0 {
+				t.Errorf("id %q padding %v: %dpx avatar is blank", id, padding, MinSize)
+			}
 		}
 	}
 }
@@ -287,4 +314,3 @@ func inkBounds(t *testing.T, pngBytes []byte, size int) (minPad float64, touches
 
 	return minPad, minX == 0 || minY == 0 || maxX == size-1 || maxY == size-1
 }
-

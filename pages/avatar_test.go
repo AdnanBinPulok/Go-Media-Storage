@@ -52,6 +52,9 @@ func TestAvatarRouteHeadersAndCaching(t *testing.T) {
 	if got := resp.Header.Get("X-Avatar-Cache"); got != "MISS" {
 		t.Errorf("X-Avatar-Cache = %q, want MISS on first request", got)
 	}
+	if got := resp.Header.Get("X-Avatar-Generation-Time"); !strings.HasSuffix(got, "ms") {
+		t.Errorf("X-Avatar-Generation-Time = %q, want a millisecond value", got)
+	}
 
 	// Second request must come from the in-memory cache.
 	req2 := httptest.NewRequest("GET", "/avatar/"+testUUID, nil)
@@ -137,10 +140,10 @@ func TestAvatarRouteSizes(t *testing.T) {
 		target string
 		want   int
 	}{
-		{"/avatar/" + testUUID, 256},                  // default
-		{"/avatar/" + testUUID + "?size=8", 8},        // min
-		{"/avatar/" + testUUID + "?size=64", 64},      // normal
-		{"/avatar/" + testUUID + "?size=4096", 4096},  // max
+		{"/avatar/" + testUUID, 256},                 // default
+		{"/avatar/" + testUUID + "?size=8", 8},       // min
+		{"/avatar/" + testUUID + "?size=64", 64},     // normal
+		{"/avatar/" + testUUID + "?size=4096", 4096}, // max
 	}
 
 	for _, tc := range cases {
@@ -222,6 +225,16 @@ func fetchBody(t *testing.T, app *fiber.App, target string) []byte {
 		t.Fatalf("%s: status = %d, body = %s", target, resp.StatusCode, body)
 	}
 	return body
+}
+
+// pngSize decodes a PNG and returns its width, which doubles as the height for
+// these square avatars.
+func pngSize(data []byte) (int, error) {
+	img, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		return 0, err
+	}
+	return img.Bounds().Dx(), nil
 }
 
 func fetchHeader(t *testing.T, app *fiber.App, target, header string) string {

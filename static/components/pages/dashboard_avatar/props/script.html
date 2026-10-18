@@ -1,10 +1,18 @@
 <script>
     (function () {
-        const DEFAULT_SIZE = 256;
-        const MIN_SIZE = 8;
-        const MAX_SIZE = 4096;
-        const GALLERY_SIZE = 128;
+        const form = document.getElementById('avatar-form');
+        if (!form) return;
+
+        // Limits and the default come from the server (AVATAR_DEFAULT_SIZE), not
+        // from hard-coded constants, so the page always matches the route.
+        const DEFAULT_SIZE = parseInt(form.dataset.defaultSize, 10) || 256;
+        const MIN_SIZE = parseInt(form.dataset.minSize, 10) || 8;
+        const MAX_SIZE = parseInt(form.dataset.maxSize, 10) || 4096;
+        const GALLERY_SIZE = 96;
         const GALLERY_COUNT = 12;
+
+        const CHIP_IDLE = 'rounded border border-white/10 bg-secondary/50 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted transition-colors hover:border-highlight/40 hover:text-text-secondary';
+        const CHIP_ACTIVE = 'rounded border border-highlight/50 bg-highlight/10 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-highlight';
 
         const ui = {
             uuid: document.getElementById('avatar-uuid'),
@@ -14,7 +22,6 @@
             metaUUID: document.getElementById('avatar-meta-uuid'),
             metaSize: document.getElementById('avatar-meta-size'),
             requestURL: document.getElementById('avatar-request-url'),
-            urlHint: document.getElementById('avatar-url-hint'),
             download: document.getElementById('avatar-download'),
             gallery: document.getElementById('avatar-gallery'),
             presets: document.getElementById('avatar-size-presets'),
@@ -46,11 +53,8 @@
             }).join('');
 
             return [
-                hex.slice(0, 8),
-                hex.slice(8, 12),
-                hex.slice(12, 16),
-                hex.slice(16, 20),
-                hex.slice(20),
+                hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16),
+                hex.slice(16, 20), hex.slice(20),
             ].join('-');
         }
 
@@ -70,39 +74,41 @@
             }
 
             return [
-                hex.slice(0, 8),
-                hex.slice(8, 12),
-                hex.slice(12, 16),
-                hex.slice(16, 20),
-                hex.slice(20),
+                hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16),
+                hex.slice(16, 20), hex.slice(20),
             ].join('-');
         }
 
         function parseSize(raw) {
             const n = parseInt(raw, 10);
             if (isNaN(n)) return 0;
-            if (n < MIN_SIZE) return MIN_SIZE;
-            if (n > MAX_SIZE) return MAX_SIZE;
-            return n;
+            return Math.min(Math.max(n, MIN_SIZE), MAX_SIZE);
         }
 
         function avatarURL(uuid, size) {
             return '/avatar/' + encodeURIComponent(uuid) + '?size=' + size;
         }
 
+        function markActiveChip(size) {
+            if (!ui.presets) return;
+            ui.presets.querySelectorAll('[data-size]').forEach(function (chip) {
+                const active = parseInt(chip.dataset.size, 10) === size;
+                chip.className = active ? CHIP_ACTIVE : CHIP_IDLE;
+            });
+        }
+
         function refreshPreview() {
             const url = avatarURL(state.uuid, state.size);
 
             ui.image.src = url;
-            ui.image.width = state.size;
-            ui.image.height = state.size;
-            ui.meta.textContent = state.size + ' × ' + state.size + ' px';
+            ui.meta.textContent = state.size + ' × ' + state.size;
             ui.metaUUID.textContent = state.uuid;
+            ui.metaUUID.title = state.uuid;
             ui.metaSize.textContent = state.size + ' px';
-            ui.requestURL.textContent = url;
-            ui.urlHint.textContent = url;
+            ui.requestURL.value = url;
             ui.download.href = url;
             ui.download.setAttribute('download', state.uuid + '-' + state.size + '.png');
+            markActiveChip(state.size);
         }
 
         function setSize(size) {
@@ -125,7 +131,7 @@
 
             const requested = parseInt(ui.size.value, 10);
             if (isNaN(requested)) {
-                showNotification('Size must be a number between ' + MIN_SIZE + ' and ' + MAX_SIZE, 'error');
+                showNotification('Size must be between ' + MIN_SIZE + ' and ' + MAX_SIZE, 'error');
                 ui.size.focus();
                 return;
             }
@@ -159,7 +165,7 @@
         function makeTile(uuid) {
             const tile = document.createElement('button');
             tile.type = 'button';
-            tile.className = 'avatar-checker group relative overflow-hidden rounded-lg border border-white/10 p-1 transition-all hover:border-highlight/40';
+            tile.className = 'avatar-checker group relative overflow-hidden rounded-md border border-white/10 p-0.5 transition-colors hover:border-highlight/40';
             tile.title = uuid;
 
             const img = document.createElement('img');
@@ -175,7 +181,6 @@
                 state.uuid = uuid;
                 ui.uuid.value = uuid;
                 refreshPreview();
-                showNotification('Loaded ' + uuid.slice(0, 8) + '…', 'info');
             });
 
             return tile;
@@ -199,8 +204,7 @@
                 });
             }
 
-            // A fresh UUID on load means the page is never empty, and the
-            // "Generate" button shows the default size immediately.
+            // A fresh UUID on load means the page is never empty.
             state.uuid = randomUUID();
             ui.uuid.value = state.uuid;
             setSize(DEFAULT_SIZE);
