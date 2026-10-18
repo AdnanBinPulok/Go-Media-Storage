@@ -16,11 +16,13 @@ func GeneratePNG(id string, size int, paddingPct float64) ([]byte, error)
 | arg | meaning |
 |---|---|
 | `id` | any string up to 256 bytes; hashed to a seed, so `user_42` works as well as a UUID |
-| `size` | output edge in pixels, clamped to 16..512 |
+| `size` | output edge in pixels, clamped to 8..4096, default 256 |
 | `paddingPct` | minimum transparent border per side, as a fraction of width (`0.05` = 5%), clamped to 0..0.45 |
 
 Budget: **~4.8 ms** per 256 px avatar, **~14 ms** at 512 px, single goroutine.
-Cache hits cost **~235 ns**. Both are measured, not estimated — see section 13.
+At the 4096 maximum a render costs roughly a second and a 64 MiB buffer, so the
+route throttles those separately.
+Cache hits cost **~235 ns**. Both are measured, not estimated — see section 10.
 
 ---
 
@@ -664,7 +666,13 @@ func renderImage(spec avatarSpec, size int, paddingPct float64) *image.RGBA {
 	full := img.Bounds()
 
 	// f is fitted into [-1,1], so bodyRadius is a hard bound on the drawing.
+	// An extreme padding on a tiny canvas would leave nothing to draw, so floor
+	// the extent to keep at least a dot of ink.
 	maxExtent := (0.5-paddingPct)*float64(size) - fringePx
+	if maxExtent < 1.5 {
+		maxExtent = 1.5
+	}
+
 	bodyRadius := spec.BodyScale * maxExtent
 
 	drawShape(img, f, cx, cy, bodyRadius, spec.AspectY, full,
@@ -682,12 +690,16 @@ Two constants worth understanding:
 
 ```go
 const DefaultPaddingPct = 0.05 // caller passes this when it has no opinion
+const DefaultSize       = 256  // route default when ?size is absent
 const fringePx = 1.0           // AAA fringe half-width, in final pixels
 ```
 
 `fringePx` exists because the coverage band is about half a pixel wide on each
 side of the geometric edge. Without subtracting it, a requested 5% measures as
 4.5% and a "0% padding" avatar shaves ink off the border pixels.
+
+The radius floor (`maxExtent >= 1.5`) only matters at `MinSize`: at 8 px with a
+large padding the computed extent goes negative and the avatar would be blank.
 
 **Padding is a floor, not an exact value.** `BodyScale` in `[0.95, 1.0]` adds up
 to 2.5% extra size variety, so measured padding is `requested + 0..2.5%`.
@@ -731,6 +743,11 @@ min padding: 5.08% (target >= 5.00%)   clipped: 0
 512 px is ~4× the pixels and therefore ~4× the time; it stays one-time cost per
 cache entry. The 256 px budget is the one to hold under 10 ms.
 
+Cost scales with area, so the maximum is the outlier: a 4096 px avatar is 256×
+the pixels of 256 px, which lands around a second of CPU and a 64 MiB transient
+buffer. That is why `pages/avatar.go` throttles renders above 1024 px through a
+two-slot gate instead of letting them run unbounded.
+
 Where the 4.8 ms went, and what each step replaced:
 
 | Step | Before | After |
@@ -770,6 +787,19 @@ build instead of needing a visual check:
 // the AA fringe is not counted as ink.
 minPad, touchesEdge := inkBounds(t, pngBytes, size)
 ```
+
+The HTTP layer has its own suite in `pages/avatar_test.go`:
+
+| Check | Test | Expected |
+|---|---|---|
+| status and headers | `TestAvatarRouteHeadersAndCaching` | 200, `image/png`, TTL headers, quoted ETag, MISS then HIT |
+| UUID equivalence | `TestAvatarRouteNormalizesUUID` | every spelling returns identical bytes |
+| UUID rejection | `TestAvatarRouteRejectsInvalidUUID` | 400 for non-UUIDs |
+| size rejection | `TestAvatarRouteRejectsInvalidSize` | 400 for `?size=abc` |
+| size handling | `TestAvatarRouteSizes` | default 256, min 8, max 4096 |
+| conditional requests | `TestAvatarRouteNotModified` | 304 with an empty body |
+| ETag keying | `TestAvatarRouteETagVariesWithSize` | ETag changes with size |
+| dashboard templates | `TestDashboardAvatarTemplateRenders` | page executes and contains the controls |
 
 ---
 
@@ -819,10 +849,15 @@ Renderer and layout:
    the bbox.
 6. **Drawing at 4× and encoding there** — 16× the bytes for no visual gain.
 7. **Placing eyes at the canvas center** — breaks on offset/half faces.
-8. **Strict UUID parsing** — hashing accepts any string; only bound the length
-   (e.g. 128 chars) at the route layer to keep cache keys sane.
+8. **Skipping UUID normalization** — the generator hashes any string, so
+   `550E...` and `550e...` would be different avatars and two cache entries. The
+   route normalizes first; keep that step if you add another entry point.
 9. **Look versioning** — changing `P` or the palette changes every existing
    avatar. If that matters later, hash a version prefix: `sha256("v2:" + id)`.
+10. **Binding `max-age` to the in-memory TTL** — the browser copy is independent
+    of the server cache. A long `max-age` means `Purge()` cannot reach clients
+    that already have the image, which is fine for a 1-day avatar TTL and wrong
+    for anything that changes.
 
 ---
 
@@ -899,70 +934,137 @@ generated avatar becomes stale at that moment.
 
 ## 15. Wiring the route
 
-The generator knows nothing about HTTP. Everything below is caller policy.
+The generator knows nothing about HTTP. Everything below is caller policy, and
+it lives in `pages/avatar.go` plus `pages/avatar_store.go`.
+
+### The handler
 
 ```go
-package pages
-
-import (
-	"strconv"
-	"sync"
-	"time"
-
-	"go-media-storage/avatar_generator"
-	"github.com/gofiber/fiber/v2"
-)
-
-var (
-	avatarCacheOnce sync.Once
-	avatarCache     *avatar_generator.Cache
-)
-
-func avatarStore() *avatar_generator.Cache {
-	avatarCacheOnce.Do(func() {
-		avatarCache = avatar_generator.NewCache(avatar_generator.DefaultCacheConfig())
-	})
-	return avatarCache
-}
-
 func AvatarPage(router fiber.Router) {
-	router.Get("/avatar/:uuid", func(c *fiber.Ctx) error {
-		id := c.Params("uuid")
+	rateLimiter := utils.RateLimiter(utils.RateLimitConfig{
+		Requests: 120,
+		Window:   time.Second * 10,
+		Scope:    "avatar", // keep this counter out of the dashboard limiter
+	})
 
-		size := 128
-		if v, err := strconv.Atoi(c.Query("size")); err == nil {
-			size = v
+	router.Get("/avatar/:uuid", rateLimiter, func(c *fiber.Ctx) error {
+		// Every valid UUID spelling normalizes to one lowercase canonical form,
+		// so it maps to one avatar and one cache entry.
+		id, ok := utils.NormalizeUUID(c.Params("uuid"))
+		if !ok {
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid UUID")
 		}
 
-		png, hit, err := avatarStore().PNG(id, size, avatar_generator.DefaultPaddingPct)
+		size := avatar_generator.DefaultSize
+		if raw := c.Query("size"); raw != "" {
+			parsed, err := strconv.Atoi(raw)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Invalid size")
+			}
+			size = parsed // clamped to MinSize..MaxSize by the generator
+		}
+
+		png, hit, err := avatarPNG(id, size)
 		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+			return err
+		}
+
+		setAvatarCacheHeaders(c, id, size) // Cache-Control, CDN headers, ETag
+
+		if c.Fresh() { // If-None-Match matched: the client already has these bytes
+			c.Status(fiber.StatusNotModified)
+			return nil
 		}
 
 		c.Set(fiber.HeaderContentType, "image/png")
-		c.Set(fiber.HeaderCacheControl, "public, max-age=300")
-		c.Set("ETag", avatar_generator.ETag(id, size, avatar_generator.DefaultPaddingPct))
-		c.Set("X-Avatar-Cache", map[bool]string{true: "HIT", false: "MISS"}[hit])
+		c.Set("X-Content-Type-Options", "nosniff")
+		if hit {
+			c.Set("X-Avatar-Cache", "HIT")
+		} else {
+			c.Set("X-Avatar-Cache", "MISS")
+		}
 
 		return c.Send(png)
 	})
 }
 ```
 
-Rules the handler must follow:
+### Cache headers
+
+```go
+func setAvatarCacheHeaders(c *fiber.Ctx, id string, size int) {
+	ttl := settings.CachingConfigInstance.AvatarCacheTime // AVATAR_CACHE_TIME_SECONDS, default 86400
+	if ttl <= 0 {
+		ttl = 86400
+	}
+
+	c.Set(fiber.HeaderCacheControl, fmt.Sprintf("public, max-age=%d, s-maxage=%d, immutable", ttl, ttl))
+	c.Set("CDN-Cache-Control", fmt.Sprintf("public, max-age=%d, immutable", ttl))
+	c.Set("Cloudflare-CDN-Cache-Control", fmt.Sprintf("public, max-age=%d, immutable", ttl))
+	c.Set(fiber.HeaderETag, avatar_generator.ETag(id, size, avatar_generator.DefaultPaddingPct))
+}
+```
+
+Precedence at Cloudflare is `Cloudflare-CDN-Cache-Control` >
+`CDN-Cache-Control` > `s-maxage` > `max-age`, so the edge TTL can be raised
+without touching what browsers do.
+
+### UUID validation
+
+`utils.NormalizeUUID` accepts canonical, uppercase, 32-hex, braced, `urn:uuid:`
+and percent-encoded forms, then returns the lowercase canonical spelling. Two
+consequences worth knowing:
+
+- `550E...`, `550e...`, the 32-hex form and `urn:uuid:550e...` are the same
+  avatar and the same cache entry.
+- Anything that is not 32 hex characters is rejected with `400` before it can
+  become a cache key, so `user_42` no longer works. Hash any non-UUID identifier
+  before putting it in the URL if you need that.
+
+### Cloudflare
+
+The origin headers alone are not enough: `/avatar/<uuid>` has no file extension,
+so Cloudflare's default static cache ignores it. Add a **Cache Rule**:
+
+| Setting | Value |
+|---|---|
+| Expression | `(http.request.uri.path matches "^/avatar/")` |
+| Cache eligibility | Eligible for cache |
+| Edge TTL | Use cache-control header if present |
+| Cache key | Standard (keep the query string) |
+
+Keeping the cache level **Standard** is required: `?size=256` and `?size=512` are
+different images, so ignoring the query string would serve the wrong dimensions.
+
+### Oversized renders
+
+`avatarPNG` gates renders above 1024 px through a 2-slot channel:
+
+```go
+if size > heavySize {
+	if !acquireHeavySlot() { // waits up to 5s
+		return nil, false, fiber.NewError(fiber.StatusServiceUnavailable, "Too many large avatar requests")
+	}
+	defer releaseHeavySlot()
+}
+```
+
+At 4096 each render allocates a 64 MiB RGBA buffer, so unbounded concurrency is
+the only real memory hazard in this feature. Cache hits still pass through the
+gate, which is intentional — they release it in microseconds.
+
+### Rules the handler must follow
 
 1. **Never mutate the returned slice.** It is shared with the cache.
-2. **`max-age` must not exceed the backend TTL.** After that the browser holds a
-   copy the server no longer has, and `Purge()` cannot reach it. Five minutes on
-   both sides is deliberate.
+2. **Do not lower the browser TTL below the edge TTL for no reason.** Here the
+   browser copy (1 day) deliberately outlives the server copy (5 min cache), so
+   calling `Purge()` after a look change cannot reach clients that already hold
+   the image. That is the trade-off of a long `max-age`.
 3. **Use the ETag.** Output is deterministic, so `ETag(id, size, padding)` is a
    strong validator that survives restarts and works across replicas without
-   shared state. Compare it against `If-None-Match` and return `304` when it
-   matches.
-4. **Cap `size` at the edge.** `GeneratePNG` clamps to 512, but a caller
-   requesting 4096 should be rejected before it becomes a cache key.
-5. **Bound the id length** (`MaxIDLength`, 256 bytes). Hashing accepts any
-   string; this only keeps cache keys sane.
+   shared state.
+4. **Bound the id length** (`MaxIDLength`, 256 bytes). Normalization already
+   caps a UUID at 36 bytes; this protects the generator when called directly.
 
 The property the whole design rests on:
 
@@ -971,3 +1073,32 @@ func GeneratePNG(id string, size int, paddingPct float64) ([]byte, error)
 ```
 
 No globals read, no mutation, no clock. Same arguments in, same bytes out.
+
+---
+
+## 16. The dashboard playground
+
+`/dashboard/avatar` is a thin client over the route: no new endpoint, no server
+state. It exists to make the generator explorable.
+
+| File | Role |
+|---|---|
+| `pages/dashboard_avatar.go` | login-gated page handler |
+| `static/pages/dashboard_avatar.html` | shell (header + sidebar) |
+| `.../dashboard_avatar/main.html` | composes the four sections and the script |
+| `.../props/controls.html` | UUID input, size input, preset chips, buttons |
+| `.../props/preview.html` | `<img>`, request URL, metadata, download |
+| `.../props/gallery.html` | 12 random tiles at 128 px |
+| `.../props/script.html` | randomUUID, normalize, preview, gallery logic |
+| `.../props/styles.html` | transparency checkerboard |
+
+Behavior worth noting:
+
+- Empty UUID + Generate produces a random v4 UUID, so the page never shows an
+  error for the most obvious action.
+- The client-side `normalizeUUID` mirrors the Go version, so the page rejects the
+  same inputs the server would and shows the canonical spelling it will request.
+- Size is clamped to 8..4096 with a warning notification rather than an error.
+- Gallery tiles use `?size=128`; each one is a distinct cache entry, which is
+  why the route's rate limit is set to 120 per 10 seconds.
+

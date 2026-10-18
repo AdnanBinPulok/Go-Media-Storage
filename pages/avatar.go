@@ -49,6 +49,12 @@ func AvatarPage(router fiber.Router) {
 
 		setAvatarCacheHeaders(c, id, size)
 
+		if hit {
+			c.Set("X-Avatar-Cache", "HIT")
+		} else {
+			c.Set("X-Avatar-Cache", "MISS")
+		}
+
 		// Conditional request: the browser already has these exact bytes.
 		if c.Fresh() {
 			c.Status(fiber.StatusNotModified)
@@ -57,11 +63,6 @@ func AvatarPage(router fiber.Router) {
 
 		c.Set(fiber.HeaderContentType, "image/png")
 		c.Set("X-Content-Type-Options", "nosniff")
-		if hit {
-			c.Set("X-Avatar-Cache", "HIT")
-		} else {
-			c.Set("X-Avatar-Cache", "MISS")
-		}
 
 		c.Set("X-Avatar-Generation-Time", fmt.Sprintf("%dms", gen_end.Milliseconds()))
 

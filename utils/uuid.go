@@ -1,6 +1,9 @@
 package utils
 
-import "strings"
+import (
+	"net/url"
+	"strings"
+)
 
 // uuidHexLen is the length of a UUID with its hyphens removed.
 const uuidHexLen = 32
@@ -16,6 +19,15 @@ const uuidHexLen = 32
 // one cache entry.
 func NormalizeUUID(raw string) (string, bool) {
 	s := strings.TrimSpace(raw)
+
+	// Fiber does not unescape path params by default, so a URL-copied "{...}"
+	// arrives as "%7B...%7D". Decoding here keeps that spelling usable without
+	// enabling UnescapePath for every route.
+	if strings.IndexByte(s, '%') >= 0 {
+		if decoded, err := url.PathUnescape(s); err == nil {
+			s = decoded
+		}
+	}
 
 	if len(s) >= 9 && strings.EqualFold(s[:9], "urn:uuid:") {
 		s = s[9:]
