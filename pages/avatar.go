@@ -73,7 +73,7 @@ func AvatarPage(router fiber.Router) {
 		c.Set(fiber.HeaderContentType, "image/png")
 		c.Set("X-Content-Type-Options", "nosniff")
 
-		c.Set("X-Avatar-Generation-Time", fmt.Sprintf("%dms", genTime.Milliseconds()))
+		c.Set("X-Avatar-Generation-Time", fmt.Sprintf("%dus", genTime.Microseconds()))
 
 		return c.Send(png)
 	})

@@ -18,16 +18,12 @@ type UploadManager struct {
 
 var UploadManagerInstance *UploadManager
 
-func fileExtensionFromFilename(file *multipart.FileHeader) string {
-	lastDot := strings.LastIndex(file.Filename, ".")
-	if lastDot == -1 || lastDot == len(file.Filename)-1 {
-		return ""
-	}
-	return file.Filename[lastDot:]
-}
-
 func (um *UploadManager) UploadFile(file *multipart.FileHeader, vault database_tables.VaultModel, userId int64) (database_tables.MediaFileModel, error) {
 	// example input will be "C:/Users/JohnDoe/Pictures/photo.jpg", and vault will be "my-vault"
+
+	if err := ValidateOriginalFilename(file.Filename); err != nil {
+		return database_tables.MediaFileModel{}, fmt.Errorf("file rejected: %w", err)
+	}
 
 	StoredName, err := GenerateRandomString(32)
 	if err != nil {
@@ -41,19 +37,30 @@ func (um *UploadManager) UploadFile(file *multipart.FileHeader, vault database_t
 		return database_tables.MediaFileModel{}, fmt.Errorf("file rejected: %s", scanResult.Reason)
 	}
 
-	FileExt := strings.ToLower(fileExtensionFromFilename(file))
+	// Extension is whitelist-only. The client name never becomes a path segment.
+	FileExt := SafeStoredExt(file.Filename, MimeType)
 
 	FileSizeBytes := file.Size
 
 	storedFileName := StoredName + FileExt
-	storagePath := filepath.ToSlash(filepath.Join(vault.VaultFolderName, storedFileName))
+	if !IsSafeStoredName(storedFileName) {
+		return database_tables.MediaFileModel{}, fmt.Errorf("file rejected: invalid stored name")
+	}
+
+	vaultFolder := filepath.Base(strings.TrimSpace(vault.VaultFolderName))
+	if vaultFolder == "" || vaultFolder == "." || vaultFolder == ".." ||
+		strings.ContainsAny(vaultFolder, `/\:`) || strings.Contains(vaultFolder, "..") {
+		return database_tables.MediaFileModel{}, fmt.Errorf("file rejected: invalid vault folder")
+	}
+
+	storagePath := filepath.ToSlash(filepath.Join(vaultFolder, storedFileName))
 
 	now := time.Now().UTC()
 
 	mediaRecord := database_tables.MediaFileModel{
 		OwnerID:       userId,
 		VaultID:       vault.ID,
-		OriginalName:  file.Filename,
+		OriginalName:  filepath.Base(file.Filename),
 		MimeType:      MimeType,
 		FileType:      modules.FileTypeFromMimeType(MimeType),
 		FileExt:       FileExt,

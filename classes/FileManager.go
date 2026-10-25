@@ -34,12 +34,26 @@ var FileManagerInstance *FileManager
 //
 // Returns the absolute safe path or an error if validation fails.
 func (fm *FileManager) ResolvePath(filePath string) (string, error) {
-	cleanRel := filepath.Clean(strings.TrimSpace(filePath))
+	raw := strings.TrimSpace(filePath)
+	if raw == "" || strings.ContainsRune(raw, 0) {
+		return "", fmt.Errorf("invalid file path")
+	}
+	// Percent-encoded separators must never appear in stored paths.
+	if strings.Contains(raw, "%") {
+		return "", fmt.Errorf("invalid file path")
+	}
+
+	cleanRel := filepath.Clean(raw)
 	if cleanRel == "" || cleanRel == "." {
 		return "", fmt.Errorf("invalid file path")
 	}
-	if filepath.IsAbs(cleanRel) {
+	if filepath.IsAbs(cleanRel) || strings.HasPrefix(cleanRel, "/") || strings.HasPrefix(cleanRel, `\`) {
+		// On Windows filepath.IsAbs("/etc/passwd") is false; still reject slash roots.
 		return "", fmt.Errorf("absolute file path is not allowed")
+	}
+	// After Clean, reject any remaining parent references.
+	if cleanRel == ".." || strings.HasPrefix(cleanRel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("file path escapes storage root")
 	}
 
 	baseAbs, err := filepath.Abs(fm.StoragePath)

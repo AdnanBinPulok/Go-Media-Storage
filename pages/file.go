@@ -14,6 +14,9 @@ import (
 func FilePage(router fiber.Router) {
 	router.Get("/file/view/:storedName", func(c *fiber.Ctx) error {
 		storedName := string(c.Params("storedName"))
+		if !classes.IsSafeStoredName(storedName) {
+			return c.Status(fiber.StatusNotFound).SendString("File not found")
+		}
 
 		mediaFileRecord, err := database_tables.MediaFilesTableInstance.Table.FetchOne(
 			"stored_name", storedName,
@@ -29,13 +32,13 @@ func FilePage(router fiber.Router) {
 
 		filePath := mediaFileRecord.StoragePath
 
-		OriginalName := mediaFileRecord.OriginalName
+		dispName := classes.SanitizeDownloadFilename(mediaFileRecord.OriginalName, mediaFileRecord.StoredName)
 		MimeType := viewMimeType(mediaFileRecord.MimeType)
 		FileSizeBytes := mediaFileRecord.FileSizeBytes
 
 		c.Set("Content-Type", MimeType)
 		c.Set("X-Content-Type-Options", "nosniff")
-		c.Set("Content-Disposition", "inline; filename=\""+OriginalName+"\"")
+		c.Set("Content-Disposition", "inline; filename=\""+dispName+"\"")
 		c.Set("Content-Length", fmt.Sprint(FileSizeBytes))
 
 		BrowserCacheTime := settings.CachingConfigInstance.BrowserCacheTime
@@ -70,6 +73,9 @@ func FilePage(router fiber.Router) {
 
 	router.Get("/file/download/:storedName", func(c *fiber.Ctx) error {
 		storedName := string(c.Params("storedName"))
+		if !classes.IsSafeStoredName(storedName) {
+			return c.Status(fiber.StatusNotFound).SendString("File not found")
+		}
 
 		mediaFileRecord, err := database_tables.MediaFilesTableInstance.Table.FetchOne(
 			"stored_name", storedName,
@@ -84,14 +90,14 @@ func FilePage(router fiber.Router) {
 
 		filePath := mediaFileRecord.StoragePath
 
-		OriginalName := mediaFileRecord.OriginalName
+		dispName := classes.SanitizeDownloadFilename(mediaFileRecord.OriginalName, mediaFileRecord.StoredName)
 		MimeType := sanitizeMimeType(mediaFileRecord.MimeType)
 		FileSizeBytes := mediaFileRecord.FileSizeBytes
 
 		c.Set("Content-Type", MimeType)
 		c.Set("X-Content-Type-Options", "nosniff")
 		// Change "inline" to "attachment" to force download
-		c.Set("Content-Disposition", "attachment; filename=\""+OriginalName+"\"")
+		c.Set("Content-Disposition", "attachment; filename=\""+dispName+"\"")
 		c.Set("Content-Length", fmt.Sprint(FileSizeBytes))
 
 		BrowserCacheTime := settings.CachingConfigInstance.BrowserCacheTime

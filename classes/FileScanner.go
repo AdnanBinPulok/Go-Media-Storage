@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"path/filepath"
 	"strings"
 )
 
@@ -74,6 +75,11 @@ var htmlSignatures = [][]byte{
 //  2. File extension against a dangerous-extensions blocklist.
 //  3. The first 512 bytes of the file body for HTML/script signatures.
 func (fs *FileScanner) Scan(file *multipart.FileHeader, detectedMime string) ScanResult {
+	// 0. Path-like / percent-encoded names never reach disk.
+	if err := ValidateOriginalFilename(file.Filename); err != nil {
+		return ScanResult{Safe: false, Reason: err.Error()}
+	}
+
 	// 1. MIME type check
 	cleanMime := strings.ToLower(strings.TrimSpace(strings.SplitN(detectedMime, ";", 2)[0]))
 	if dangerousMimeTypes[cleanMime] {
@@ -83,8 +89,8 @@ func (fs *FileScanner) Scan(file *multipart.FileHeader, detectedMime string) Sca
 		}
 	}
 
-	// 2. Extension check
-	name := strings.ToLower(file.Filename)
+	// 2. Extension check (basename only; already validated as non-path)
+	name := strings.ToLower(filepath.Base(file.Filename))
 	lastDot := strings.LastIndex(name, ".")
 	if lastDot != -1 {
 		ext := name[lastDot:]
