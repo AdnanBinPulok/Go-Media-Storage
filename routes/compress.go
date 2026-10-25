@@ -33,14 +33,10 @@ func CompressRoutes(router fiber.Router) {
 			})
 		}
 
-		if req.Quality == 0 {
-			req.Quality = 80
-		}
-
-		if req.Quality < 1 || req.Quality > 100 {
+		if err := req.Normalize(); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"success": false,
-				"message": "quality must be between 1 and 100",
+				"message": err.Error(),
 			})
 		}
 
@@ -113,14 +109,10 @@ func CompressRoutes(router fiber.Router) {
 			})
 		}
 
-		if req.Quality == 0 {
-			req.Quality = 80
-		}
-
-		if req.Quality < 1 || req.Quality > 100 {
+		if err := req.Normalize(); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"success": false,
-				"message": "quality must be between 1 and 100",
+				"message": err.Error(),
 			})
 		}
 

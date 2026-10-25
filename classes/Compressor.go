@@ -2,10 +2,12 @@ package classes
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/gif"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -23,6 +25,24 @@ type CompressionRequest struct {
 	MaxWidth      int    `json:"max_width"`
 	Lossless      bool   `json:"lossless"`
 	ConvertToWebP bool   `json:"convert_to_webp"`
+}
+
+// Normalize applies defaults and rejects values the encoder cannot handle.
+// Quality 0 means "use the default"; max_width 0 means "do not resize".
+func (r *CompressionRequest) Normalize() error {
+	if r.Quality == 0 {
+		r.Quality = 80
+	}
+	if r.Quality < 1 || r.Quality > 100 {
+		return fmt.Errorf("quality must be between 1 and 100")
+	}
+	if r.MaxWidth < 0 {
+		return fmt.Errorf("max_width cannot be negative")
+	}
+	if r.MaxWidth > MaxImageDimension {
+		return fmt.Errorf("max_width must be at most %d", MaxImageDimension)
+	}
+	return nil
 }
 
 type compressionMeta struct {
@@ -44,6 +64,12 @@ func RunImageCompression(mediaFile database_tables.MediaFileModel, req Compressi
 		return
 	}
 
+	// Runs in a goroutine, so a bad request must return instead of panicking.
+	if err := req.Normalize(); err != nil {
+		log.Printf("[compress] reject request for %s: %v", mediaFile.StoredName, err)
+		return
+	}
+
 	absPath, err := FileManagerInstance.ResolvePath(mediaFile.StoragePath)
 	if err != nil {
 		log.Printf("[compress] resolve path for %s: %v", mediaFile.StoredName, err)
@@ -53,6 +79,19 @@ func RunImageCompression(mediaFile database_tables.MediaFileModel, req Compressi
 	f, err := os.Open(absPath)
 	if err != nil {
 		log.Printf("[compress] open file %s: %v", mediaFile.StoredName, err)
+		return
+	}
+
+	// Header-only check: a 33-byte PNG can declare a 2^31 x 2^31 canvas and the
+	// decoder would try to allocate it. Refuse before any pixels are read.
+	if err := CheckImageHeader(f); err != nil {
+		f.Close()
+		log.Printf("[compress] reject %s: %v", mediaFile.StoredName, err)
+		return
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		f.Close()
+		log.Printf("[compress] rewind %s: %v", mediaFile.StoredName, err)
 		return
 	}
 
@@ -285,8 +324,13 @@ func scaleImageToWidth(img image.Image, maxWidth int) image.Image {
 	bounds := img.Bounds()
 	origW := bounds.Dx()
 	origH := bounds.Dy()
-	if origW == 0 {
+	// Callers validate first; this is the last line of defence, because a
+	// negative width reaches image.NewNRGBA and panics.
+	if origW == 0 || maxWidth <= 0 {
 		return img
+	}
+	if maxWidth > MaxImageDimension {
+		maxWidth = MaxImageDimension
 	}
 	newH := max(1, origH*maxWidth/origW)
 
@@ -300,6 +344,9 @@ func scaleImageToWidth(img image.Image, maxWidth int) image.Image {
 // palette using Floyd-Steinberg dithering. The caller is responsible for
 // setting the correct Rect (position) on the returned image.
 func scalePalettedToSize(src *image.Paletted, newW, newH int) *image.Paletted {
+	if newW <= 0 || newH <= 0 {
+		return src
+	}
 	bounds := src.Bounds()
 
 	nrgba := image.NewNRGBA(bounds)
