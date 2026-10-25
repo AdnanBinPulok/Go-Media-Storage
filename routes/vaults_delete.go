@@ -20,7 +20,7 @@ func VaultDeleteRoutes(router fiber.Router) {
 		}
 		var body DeleteVaultRequest
 		if err := c.BodyParser(&body); err != nil {
-			return err
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 		}
 
 		vault, err := database_tables.VaultsTableInstance.Table.FetchOne(map[string]any{

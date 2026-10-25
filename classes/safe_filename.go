@@ -61,6 +61,13 @@ func ValidateOriginalFilename(name string) error {
 	if strings.ContainsRune(name, 0) {
 		return fmt.Errorf("filename contains null byte")
 	}
+	// Control characters (newline, tab, escape) never belong in a filename and
+	// are how log forging / header smuggling payloads start.
+	for _, r := range name {
+		if r < 0x20 || r == 0x7f {
+			return fmt.Errorf("filename contains control characters")
+		}
+	}
 
 	lower := strings.ToLower(name)
 	if strings.Contains(lower, "%") {
@@ -106,8 +113,9 @@ func SafeStoredExt(originalName, mimeType string) string {
 // IsSafeStoredName reports whether a view/download path parameter matches the
 // names this server actually creates.
 func IsSafeStoredName(name string) bool {
-	name = strings.TrimSpace(name)
-	if name == "" || strings.ContainsRune(name, 0) {
+	// No trimming: a name with surrounding whitespace is not a name this
+	// server wrote, and must not be normalised into one.
+	if name == "" || strings.TrimSpace(name) != name || strings.ContainsRune(name, 0) {
 		return false
 	}
 	if strings.ContainsAny(name, `/\:`) || strings.Contains(name, "..") || strings.Contains(name, "%") {

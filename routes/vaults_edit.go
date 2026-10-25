@@ -28,7 +28,7 @@ func VaultEditRoutes(router fiber.Router) {
 
 		var body EditVaultRequest
 		if err := c.BodyParser(&body); err != nil {
-			return err
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 		}
 
 		if body.ID <= 0 {

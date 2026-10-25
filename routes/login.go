@@ -29,7 +29,7 @@ func LoginRoutes(router fiber.Router) {
 		var body LoginRequest
 
 		if err := c.BodyParser(&body); err != nil {
-			return err
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 		}
 
 		email := body.Email

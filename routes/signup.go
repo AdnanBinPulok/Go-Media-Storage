@@ -51,7 +51,7 @@ func SignupRoutes(router fiber.Router) {
 		var body SignupRequest
 
 		if err := c.BodyParser(&body); err != nil {
-			return err
+			return fiber.NewError(fiber.StatusBadRequest, "Invalid request body")
 		}
 
 		fullName := body.FullName

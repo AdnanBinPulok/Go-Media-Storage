@@ -42,6 +42,14 @@ func (fm *FileManager) ResolvePath(filePath string) (string, error) {
 	if strings.Contains(raw, "%") {
 		return "", fmt.Errorf("invalid file path")
 	}
+	// Storage paths are generated ASCII only. Rejecting every non-ASCII and
+	// control rune stops look-alike separators (U+FF0F, U+FF3C) and full-width
+	// dots from ever being treated as a filename here.
+	for _, r := range raw {
+		if r < 0x20 || r > 0x7e {
+			return "", fmt.Errorf("invalid file path")
+		}
+	}
 
 	cleanRel := filepath.Clean(raw)
 	if cleanRel == "" || cleanRel == "." {
