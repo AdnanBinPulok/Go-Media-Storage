@@ -113,7 +113,14 @@ func IsSafeStoredName(name string) bool {
 	if strings.ContainsAny(name, `/\:`) || strings.Contains(name, "..") || strings.Contains(name, "%") {
 		return false
 	}
-	return storedNamePattern.MatchString(name)
+	if !storedNamePattern.MatchString(name) {
+		return false
+	}
+	ext := strings.ToLower(filepath.Ext(name))
+	if ext != "" && !allowedExts[ext] {
+		return false
+	}
+	return true
 }
 
 // SanitizeDownloadFilename produces a Content-Disposition filename that cannot

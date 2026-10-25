@@ -33,3 +33,8 @@ venv/
 # ── OS files ─────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+# ── Test artefacts ───────────────────────────────────────────
+coverage.txt
+SECURITY_BREAK_TEST.md
+*_test.go
