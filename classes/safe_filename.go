@@ -12,6 +12,14 @@ import (
 // 64 hex chars from GenerateRandomString(32), optional short alphanumeric ext.
 var storedNamePattern = regexp.MustCompile(`(?i)^[0-9a-f]{64}(\.[a-z0-9]{1,8})?$`)
 
+// maxDecodeRounds caps how many percent-encoding layers we peel off a client
+// filename. Two rounds cover accidental double-encoding; anything deeper is
+// refused rather than decoded forever.
+const maxDecodeRounds = 2
+
+// percentEscapePattern matches a single %XX escape.
+var percentEscapePattern = regexp.MustCompile(`%[0-9a-fA-F]{2}`)
+
 // allowedExts is the only set of extensions written to disk. Anything else
 // (including ".env", ".php", or garbage after a last-dot) is ignored in favour
 // of the MIME fallback or no extension.
@@ -50,47 +58,82 @@ var mimeFallbackExt = map[string]string{
 // ValidateOriginalFilename rejects path-like or encoded-traversal names before
 // anything is written. The original name is metadata only; storage never uses it
 // as a path, but we still refuse PoC names that try to look like escapes.
+//
+// Percent-escapes are decoded first (see NormalizeOriginalFilename), so a name
+// like "Screenshot%202026-10-03%20105638.png" is accepted and stored as
+// "Screenshot 2026-10-03 105638.png".
 func ValidateOriginalFilename(name string) error {
+	_, err := NormalizeOriginalFilename(name)
+	return err
+}
+
+// NormalizeOriginalFilename decodes percent-escapes and returns the decoded name
+// after validating it. Browsers and OSes often send escaped names such as
+// "Screenshot%202026-10-03%20105638.png", which are benign; the dangerous ones
+// only become dangerous once decoded ("%2f%2e%2e%2f" -> "/../").
+//
+// The returned name is safe to store as metadata and to use in a
+// Content-Disposition header: no separators, no "..", no null/control bytes.
+func NormalizeOriginalFilename(name string) (string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return fmt.Errorf("empty filename")
-	}
-	if len(name) > 255 {
-		return fmt.Errorf("filename too long")
+		return "", fmt.Errorf("empty filename")
 	}
 	if strings.ContainsRune(name, 0) {
-		return fmt.Errorf("filename contains null byte")
+		return "", fmt.Errorf("filename contains null byte")
+	}
+
+	decoded, err := decodePercentLayers(name)
+	if err != nil {
+		return "", err
+	}
+	if len(decoded) > 255 {
+		return "", fmt.Errorf("filename too long")
+	}
+	if strings.ContainsRune(decoded, 0) {
+		return "", fmt.Errorf("filename contains null byte")
 	}
 	// Control characters (newline, tab, escape) never belong in a filename and
 	// are how log forging / header smuggling payloads start.
-	for _, r := range name {
+	for _, r := range decoded {
 		if r < 0x20 || r == 0x7f {
-			return fmt.Errorf("filename contains control characters")
+			return "", fmt.Errorf("filename contains control characters")
 		}
 	}
 
-	lower := strings.ToLower(name)
-	if strings.Contains(lower, "%") {
-		return fmt.Errorf("filename contains percent-encoding")
-	}
-	if strings.ContainsAny(name, `/\:`) || strings.Contains(name, "..") {
-		return fmt.Errorf("filename contains path separators")
+	if strings.ContainsAny(decoded, `/\:`) || strings.Contains(decoded, "..") {
+		return "", fmt.Errorf("filename contains path separators")
 	}
 
-	// Also catch already-decoded traversal after a client somehow decoded once.
-	decoded, err := url.PathUnescape(name)
-	if err == nil && decoded != name {
-		if strings.ContainsAny(decoded, `/\:`) || strings.Contains(decoded, "..") {
-			return fmt.Errorf("filename contains encoded path separators")
+	base := filepath.Base(decoded)
+	if base == "." || base == ".." || base != decoded {
+		return "", fmt.Errorf("filename must be a bare name")
+	}
+
+	return decoded, nil
+}
+
+// decodePercentLayers unescapes up to maxDecodeRounds layers of percent-encoding.
+//
+// Malformed escapes ("100%done.jpg") are not an encoding layer, so they are left
+// as literal text. When escapes survive all rounds the name is refused instead
+// of being decoded forever — deep encoding is only ever used to hide a payload.
+func decodePercentLayers(name string) (string, error) {
+	for round := 0; round < maxDecodeRounds; round++ {
+		if !percentEscapePattern.MatchString(name) {
+			return name, nil
 		}
+		decoded, err := url.PathUnescape(name)
+		if err != nil || decoded == name {
+			// Malformed or no-op escape: treat the remainder as literal text.
+			return name, nil
+		}
+		name = decoded
 	}
-
-	base := filepath.Base(name)
-	if base == "." || base == ".." || base != name {
-		return fmt.Errorf("filename must be a bare name")
+	if percentEscapePattern.MatchString(name) {
+		return "", fmt.Errorf("filename is over-encoded")
 	}
-
-	return nil
+	return name, nil
 }
 
 // SafeStoredExt returns a whitelist extension for on-disk storage.

@@ -93,10 +93,7 @@ func UploadRoutes(router fiber.Router) {
 			uploaded, err := classes.UploadManagerInstance.UploadFile(uploadedFile, vault, vault.OwnerID)
 			if err != nil {
 				log.Printf("Error uploading file %s: %v", uploadedFile.Filename, err)
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"success": false,
-					"message": err.Error(),
-				})
+				return uploadErrorResponse(c, err)
 			}
 			uploadMediaRecords = append(uploadMediaRecords, uploaded)
 		}

@@ -1,6 +1,7 @@
 package classes
 
 import (
+	"errors"
 	"fmt"
 	"go-media-storage/database_tables"
 	"go-media-storage/modules"
@@ -12,6 +13,11 @@ import (
 	"time"
 )
 
+// ErrFileRejected marks errors caused by the uploaded file itself (bad name,
+// dangerous content, invalid target) as opposed to server faults. Routes use it
+// to answer 400 instead of 500.
+var ErrFileRejected = errors.New("file rejected")
+
 type UploadManager struct {
 	StoragePath string
 }
@@ -21,8 +27,11 @@ var UploadManagerInstance *UploadManager
 func (um *UploadManager) UploadFile(file *multipart.FileHeader, vault database_tables.VaultModel, userId int64) (database_tables.MediaFileModel, error) {
 	// example input will be "C:/Users/JohnDoe/Pictures/photo.jpg", and vault will be "my-vault"
 
-	if err := ValidateOriginalFilename(file.Filename); err != nil {
-		return database_tables.MediaFileModel{}, fmt.Errorf("file rejected: %w", err)
+	// Percent-escaped names ("Screenshot%202026-10-03%20105638.png") are decoded
+	// and validated; encoded traversal is still refused after decoding.
+	originalName, err := NormalizeOriginalFilename(file.Filename)
+	if err != nil {
+		return database_tables.MediaFileModel{}, fmt.Errorf("%w: %s", ErrFileRejected, err)
 	}
 
 	StoredName, err := GenerateRandomString(32)
@@ -34,23 +43,23 @@ func (um *UploadManager) UploadFile(file *multipart.FileHeader, vault database_t
 
 	scanResult := FileScannerInstance.Scan(file, MimeType)
 	if !scanResult.Safe {
-		return database_tables.MediaFileModel{}, fmt.Errorf("file rejected: %s", scanResult.Reason)
+		return database_tables.MediaFileModel{}, fmt.Errorf("%w: %s", ErrFileRejected, scanResult.Reason)
 	}
 
 	// Extension is whitelist-only. The client name never becomes a path segment.
-	FileExt := SafeStoredExt(file.Filename, MimeType)
+	FileExt := SafeStoredExt(originalName, MimeType)
 
 	FileSizeBytes := file.Size
 
 	storedFileName := StoredName + FileExt
 	if !IsSafeStoredName(storedFileName) {
-		return database_tables.MediaFileModel{}, fmt.Errorf("file rejected: invalid stored name")
+		return database_tables.MediaFileModel{}, fmt.Errorf("%w: invalid stored name", ErrFileRejected)
 	}
 
 	vaultFolder := filepath.Base(strings.TrimSpace(vault.VaultFolderName))
 	if vaultFolder == "" || vaultFolder == "." || vaultFolder == ".." ||
 		strings.ContainsAny(vaultFolder, `/\:`) || strings.Contains(vaultFolder, "..") {
-		return database_tables.MediaFileModel{}, fmt.Errorf("file rejected: invalid vault folder")
+		return database_tables.MediaFileModel{}, fmt.Errorf("%w: invalid vault folder", ErrFileRejected)
 	}
 
 	storagePath := filepath.ToSlash(filepath.Join(vaultFolder, storedFileName))
@@ -60,7 +69,7 @@ func (um *UploadManager) UploadFile(file *multipart.FileHeader, vault database_t
 	mediaRecord := database_tables.MediaFileModel{
 		OwnerID:       userId,
 		VaultID:       vault.ID,
-		OriginalName:  filepath.Base(file.Filename),
+		OriginalName:  originalName,
 		MimeType:      MimeType,
 		FileType:      modules.FileTypeFromMimeType(MimeType),
 		FileExt:       FileExt,

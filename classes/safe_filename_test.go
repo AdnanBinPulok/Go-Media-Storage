@@ -20,10 +20,49 @@ func TestValidateOriginalFilenameRejectsTraversal(t *testing.T) {
 		}
 	}
 
-	good := []string{"photo.jpg", "my file.webp", "archive.tar.gz"}
+	good := []string{
+		"photo.jpg",
+		"my file.webp",
+		"archive.tar.gz",
+		"Screenshot%202026-10-03%20105638.png", // bare percent-escaped spaces
+		"100%done.jpg",                         // malformed escape is literal text
+	}
 	for _, name := range good {
 		if err := ValidateOriginalFilename(name); err != nil {
 			t.Errorf("ValidateOriginalFilename(%q) = %v, want nil", name, err)
+		}
+	}
+}
+
+func TestNormalizeOriginalFilenameDecodesPercent(t *testing.T) {
+	cases := map[string]string{
+		"Screenshot%202026-10-03%20105638.png": "Screenshot 2026-10-03 105638.png",
+		"photo.jpg":                            "photo.jpg",
+		"100%done.jpg":                         "100%done.jpg",
+		"  padded.png  ":                       "padded.png",
+	}
+	for in, want := range cases {
+		got, err := NormalizeOriginalFilename(in)
+		if err != nil {
+			t.Errorf("NormalizeOriginalFilename(%q) = %v, want %q", in, err, want)
+			continue
+		}
+		if got != want {
+			t.Errorf("NormalizeOriginalFilename(%q) = %q, want %q", in, got, want)
+		}
+	}
+
+	// Decoding must not create an escape hatch: these still fail.
+	bad := []string{
+		"poc.%2f%2e%2e%2fsecrets%2f%2eenv",
+		"poc.%252f%252e%252e%252f.env",
+		"%25252e%25252e",
+		"a%2Fb.jpg",
+		"..%2Fetc%2Fpasswd",
+	}
+	for _, in := range bad {
+		if got, err := NormalizeOriginalFilename(in); err == nil {
+			t.Errorf("NormalizeOriginalFilename(%q) = %q, want error", in, got)
 		}
 	}
 }
